@@ -74,3 +74,6 @@ GEMINI.md
 .mcp.json
 mcp.json
 *.claude.json
+
+# ---------- Penyimpanan dokumen lokal (development) ----------
+backend/.storage/

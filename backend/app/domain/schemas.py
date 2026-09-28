@@ -44,3 +44,11 @@ class GenerationResult[T](BaseModel):
     is_demo: bool
     input_units: int | None = None
     output_units: int | None = None
+
+
+class AnswerDraft(BaseModel):
+    """Jawaban tanya-materi. `source_ids` wajib berasal dari potongan hasil retrieval (divalidasi server)."""
+
+    answerable: bool
+    answer: str = Field(max_length=6_000)
+    source_ids: list[str] = []

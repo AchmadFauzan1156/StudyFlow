@@ -1,0 +1,44 @@
+{
+  "description": "Fixture evaluasi RAG: tiga materi pendek dengan pertanyaan dan halaman rujukan yang diketahui. Pertanyaan out_of_scope tidak boleh dijawab dari materi.",
+  "materials": [
+    {
+      "id": "kriptografi",
+      "title": "Kriptografi Kunci Publik",
+      "pages": [
+        "Kriptografi kunci publik memakai sepasang kunci. Kunci publik boleh dibagikan kepada siapa saja, sedangkan kunci privat harus dirahasiakan pemiliknya. Enkripsi dilakukan dengan kunci publik penerima.",
+        "Algoritma RSA memilih dua bilangan prima besar p dan q. Modulus n dihitung sebagai hasil kali p dan q. Keamanan RSA bergantung pada sulitnya memfaktorkan modulus n yang sangat besar.",
+        "Tanda tangan digital dibuat dengan kunci privat pengirim dan diverifikasi dengan kunci publik pengirim. Tanda tangan menjamin keaslian dan integritas pesan."
+      ]
+    },
+    {
+      "id": "basis-data",
+      "title": "Normalisasi Basis Data",
+      "pages": [
+        "Normalisasi bertujuan mengurangi redundansi data dan anomali pembaruan. Bentuk normal pertama mensyaratkan setiap atribut bernilai atomik tanpa kelompok berulang.",
+        "Bentuk normal kedua mensyaratkan tabel sudah memenuhi bentuk normal pertama dan setiap atribut bukan kunci bergantung penuh pada seluruh kunci primer, bukan hanya sebagian kunci komposit.",
+        "Bentuk normal ketiga menghilangkan ketergantungan transitif: atribut bukan kunci tidak boleh bergantung pada atribut bukan kunci lainnya."
+      ]
+    },
+    {
+      "id": "jaringan",
+      "title": "Model OSI Jaringan Komputer",
+      "pages": [
+        "Model OSI terdiri dari tujuh lapisan: fisik, data link, jaringan, transport, sesi, presentasi, dan aplikasi. Setiap lapisan melayani lapisan di atasnya.",
+        "Lapisan transport menyediakan komunikasi ujung ke ujung. Protokol TCP menjamin pengiriman andal dan berurutan, sedangkan UDP lebih ringan tanpa jaminan pengiriman.",
+        "Lapisan jaringan menangani pengalamatan logis dan routing paket antar jaringan menggunakan alamat IP."
+      ]
+    }
+  ],
+  "questions": [
+    {"question": "Bagaimana modulus n pada RSA dihitung?", "material": "kriptografi", "page": 2},
+    {"question": "Kunci apa yang dipakai untuk membuat tanda tangan digital?", "material": "kriptografi", "page": 3},
+    {"question": "Apa syarat bentuk normal kedua?", "material": "basis-data", "page": 2},
+    {"question": "Apa yang dihilangkan oleh bentuk normal ketiga?", "material": "basis-data", "page": 3},
+    {"question": "Apa perbedaan protokol TCP dan UDP pada lapisan transport?", "material": "jaringan", "page": 2},
+    {"question": "Berapa jumlah lapisan pada model OSI?", "material": "jaringan", "page": 1}
+  ],
+  "out_of_scope": [
+    "Siapa pemenang piala dunia sepak bola tahun 1998?",
+    "Bagaimana proses fotosintesis pada tumbuhan hijau?"
+  ]
+}

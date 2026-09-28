@@ -2,7 +2,7 @@
 
 from app.providers.base import SourceText
 
-PROMPT_VERSION = "2026-09-28.1"
+PROMPT_VERSION = "2026-09-28.2"
 
 QUIZ_OPTION_COUNT = 4
 
@@ -26,11 +26,21 @@ QUIZ_SYSTEM = (
     "Sertakan pembahasan singkat yang merujuk isi materi dan label topik singkat (2–4 kata) per soal."
 )
 
+ANSWER_SYSTEM = (
+    "Kamu menjawab pertanyaan mahasiswa hanya berdasarkan potongan materi yang diberikan. " + _SAFETY +
+    " Setiap potongan diberi ID di atributnya. Jika potongan tidak memuat jawabannya, set answerable=false dan "
+    "jelaskan singkat bahwa materi belum memuat jawabannya. Jika bisa dijawab, jawab ringkas dan cantumkan ID "
+    "potongan yang benar-benar mendukung jawaban di source_ids. Jangan mengarang ID."
+)
+
+
+def _neutralize(text: str) -> str:
+    """Menetralkan penutup blok di dalam data agar materi tidak bisa "keluar" dari blok."""
+    return text.replace("</materi>", "</ materi>").replace("</potongan>", "</ potongan>")
+
 
 def material_block(source: SourceText) -> str:
-    # Hilangkan penutup blok dari materi agar tidak bisa "keluar" dari data.
-    text = source.text.replace("</materi>", "</ materi>")
-    return f"Judul: {source.title}\n<materi>\n{text}\n</materi>"
+    return f"Judul: {source.title}\n<materi>\n{_neutralize(source.text)}\n</materi>"
 
 
 def quiz_user_prompt(source: SourceText, question_count: int) -> str:
@@ -41,7 +51,17 @@ def summary_user_prompt(source: SourceText) -> str:
     return f"Rangkum materi berikut.\n\n{material_block(source)}"
 
 
-# JSON schema untuk structured output mode strict: semua properti wajib dan tanpa properti tambahan.
+def answer_user_prompt(question: str, contexts: list[tuple[str, str, str]]) -> str:
+    """contexts: (id, label sumber, teks)."""
+    blocks = "\n".join(
+        f'<potongan id="{cid}" sumber="{_neutralize(label)}">\n{_neutralize(text)}\n</potongan>'
+        for cid, label, text in contexts
+    )
+    return f"Pertanyaan: {question.strip()}\n\n<materi>\n{blocks}\n</materi>"
+
+
+# JSON schema structured output: semua properti wajib dan tanpa properti tambahan
+# (kompatibel dengan mode strict OpenAI-compatible dan responseJsonSchema Gemini).
 SUMMARY_SCHEMA = {
     "type": "object",
     "properties": {
@@ -73,5 +93,16 @@ QUIZ_SCHEMA = {
         },
     },
     "required": ["title", "questions"],
+    "additionalProperties": False,
+}
+
+ANSWER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "answerable": {"type": "boolean"},
+        "answer": {"type": "string"},
+        "source_ids": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["answerable", "answer", "source_ids"],
     "additionalProperties": False,
 }

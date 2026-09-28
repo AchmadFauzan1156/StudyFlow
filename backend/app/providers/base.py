@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from app.domain.schemas import GenerationResult, QuizDraft, SummaryDraft
+from app.domain.schemas import AnswerDraft, GenerationResult, QuizDraft, SummaryDraft
 
 
 @dataclass(frozen=True)
@@ -37,3 +37,14 @@ class AIProvider(Protocol):
     def summarize(self, source: SourceText) -> GenerationResult[SummaryDraft]: ...
 
     def generate_quiz(self, source: SourceText, question_count: int) -> GenerationResult[QuizDraft]: ...
+
+    def answer(self, question: str, contexts: list["ContextChunk"]) -> GenerationResult[AnswerDraft]: ...
+
+
+@dataclass(frozen=True)
+class ContextChunk:
+    """Potongan materi hasil retrieval yang dikirim ke model (sudah terfilter milik pengguna)."""
+
+    chunk_id: str
+    label: str
+    text: str

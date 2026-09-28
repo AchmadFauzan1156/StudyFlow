@@ -54,14 +54,14 @@ class AIInfo(BaseModel):
 @router.get("/ai/info", response_model=AIInfo)
 def ai_info(user_id: CurrentUser, db: DbSession, settings: SettingsDep) -> AIInfo:
     mode = provider_mode(settings)
-    live = settings.ai_provider is AIProviderKind.OPENAI_COMPATIBLE
-    demo = settings.ai_provider is AIProviderKind.FAKE
+    live = mode == "live"
+    demo = mode == "demo"
     return AIInfo(
         available=mode != "unconfigured",
         mode=mode,
-        provider_label=settings.ai_provider_label if live else ("Demo (bukan AI)" if demo else None),
-        model=settings.ai_model if live else None,
-        data_notice=settings.ai_data_notice if live else (
+        provider_label=settings.effective_ai_label if live else ("Demo (bukan AI)" if demo else None),
+        model=settings.effective_ai_model if live else None,
+        data_notice=settings.effective_data_notice if live else (
             "Mode demo: hasil dibuat otomatis dari kalimat catatan tanpa AI dan tidak dikirim ke pihak lain."
             if demo else None
         ),

@@ -73,14 +73,7 @@ def enqueue(session: Session, settings: Settings, user_id: uuid.UUID, req: JobRe
                        {"length": size, "max": settings.ai_max_input_chars})
 
     today = utc_today()
-    if not _reserve(session, str(user_id), today, settings.ai_user_daily_limit):
-        session.rollback()
-        raise ApiError(429, "quota_exceeded",
-                       f"Kuota AI harianmu ({settings.ai_user_daily_limit} permintaan) sudah habis. Coba lagi besok.")
-    if not _reserve(session, GLOBAL_SCOPE, today, settings.ai_global_daily_limit):
-        session.rollback()
-        raise ApiError(429, "service_quota_exceeded",
-                       "Kuota harian layanan AI gratis sudah habis. Coba lagi besok.")
+    reserve_generative(session, settings, user_id, today)
 
     job = AIJob(
         id=uuid.uuid4(), user_id=user_id, type=req.type, source_type="note", source_id=note.id,
@@ -125,8 +118,37 @@ def _reserve(session: Session, scope: str, day: date, limit: int) -> bool:
     return limit > 0 and session.execute(stmt).scalar_one_or_none() is not None
 
 
+def generative_scopes(user_id: uuid.UUID) -> list[str]:
+    return [str(user_id), GLOBAL_SCOPE]
+
+
+def index_scopes(user_id: uuid.UUID) -> list[str]:
+    return [f"idx:{user_id}", "global:idx"]
+
+
+def reserve_generative(session: Session, settings: Settings, user_id: uuid.UUID, day: date) -> None:
+    if not _reserve(session, str(user_id), day, settings.ai_user_daily_limit):
+        session.rollback()
+        raise ApiError(429, "quota_exceeded",
+                       f"Kuota AI harianmu ({settings.ai_user_daily_limit} permintaan) sudah habis. Coba lagi besok.")
+    if not _reserve(session, GLOBAL_SCOPE, day, settings.ai_global_daily_limit):
+        session.rollback()
+        raise ApiError(429, "service_quota_exceeded", "Kuota harian layanan AI gratis sudah habis. Coba lagi besok.")
+
+
+def reserve_indexing(session: Session, settings: Settings, user_id: uuid.UUID, day: date) -> None:
+    user_scope, global_scope = index_scopes(user_id)
+    if not _reserve(session, user_scope, day, settings.index_user_daily_limit):
+        session.rollback()
+        raise ApiError(429, "quota_exceeded",
+                       f"Batas unggah materi harianmu ({settings.index_user_daily_limit} dokumen) sudah tercapai.")
+    if not _reserve(session, global_scope, day, settings.index_global_daily_limit):
+        session.rollback()
+        raise ApiError(429, "service_quota_exceeded", "Kuota harian pemrosesan dokumen sudah habis. Coba lagi besok.")
+
+
 def refund_quota(session: Session, job: AIJob) -> None:
-    for scope in (str(job.user_id), GLOBAL_SCOPE):
+    for scope in job.params.get("quota_scopes", generative_scopes(job.user_id)):
         session.execute(
             update(AIUsageDaily)
             .where(AIUsageDaily.scope == scope, AIUsageDaily.day == job.quota_day, AIUsageDaily.count > 0)
@@ -166,7 +188,7 @@ def claim_next_job(session: Session, lease_seconds: int) -> tuple[uuid.UUID, int
     return (row.id, row.attempts) if row else None
 
 
-def _lock_owned_job(session: Session, job_id: uuid.UUID, attempt: int) -> AIJob | None:
+def lock_owned_job(session: Session, job_id: uuid.UUID, attempt: int) -> AIJob | None:
     """Job hanya boleh diubah oleh worker pemegang lease (attempt yang sama dan masih running)."""
     job = session.get(AIJob, job_id, with_for_update=True)
     if job is None or job.status != "running" or job.attempts != attempt:
@@ -174,8 +196,21 @@ def _lock_owned_job(session: Session, job_id: uuid.UUID, attempt: int) -> AIJob 
     return job
 
 
+def mark_succeeded(session: Session, job: AIJob, result_id: uuid.UUID | None, model_id: str | None,
+                   input_units: int | None = None, output_units: int | None = None) -> None:
+    """Menandai job selesai (dipanggil di dalam transaksi yang memegang lock job)."""
+    job.status = "succeeded"
+    job.result_id = result_id
+    job.error_code = None
+    job.lease_until = None
+    job.updated_at = datetime.now(UTC)
+    if model_id:
+        session.add(UsageRecord(user_id=job.user_id, job_id=job.id, operation=job.type, model_id=model_id,
+                                input_units=input_units, output_units=output_units, status="succeeded"))
+
+
 def reschedule(session: Session, job_id: uuid.UUID, attempt: int, delay_seconds: float, code: str) -> None:
-    job = _lock_owned_job(session, job_id, attempt)
+    job = lock_owned_job(session, job_id, attempt)
     if job is None:
         session.rollback()
         return
@@ -188,7 +223,7 @@ def reschedule(session: Session, job_id: uuid.UUID, attempt: int, delay_seconds:
 
 
 def fail(session: Session, job_id: uuid.UUID, attempt: int, code: str, model_id: str | None = None) -> None:
-    job = _lock_owned_job(session, job_id, attempt)
+    job = lock_owned_job(session, job_id, attempt)
     if job is None:
         session.rollback()
         return
@@ -207,7 +242,7 @@ def fail(session: Session, job_id: uuid.UUID, attempt: int, code: str, model_id:
 def complete(session: Session, job_id: uuid.UUID, attempt: int,
              result: GenerationResult[SummaryDraft] | GenerationResult[QuizDraft]) -> bool:
     """Menyimpan hasil secara idempotent. False jika lease sudah hilang (hasil dibuang)."""
-    job = _lock_owned_job(session, job_id, attempt)
+    job = lock_owned_job(session, job_id, attempt)
     if job is None:
         session.rollback()
         return False

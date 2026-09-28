@@ -3,6 +3,7 @@
 import uuid
 from datetime import date, datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -255,4 +256,107 @@ class UsageRecord(Base):
     input_units: Mapped[int | None] = mapped_column(Integer)
     output_units: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ---------- Fase 4: dokumen & tanya materi ----------
+
+EMBEDDING_DIM = 768  # harus sama dengan migrasi 0003 dan STUDYFLOW_EMBEDDING_DIM
+
+
+class Document(Base):
+    __tablename__ = "documents"
+    __table_args__ = (
+        ForeignKeyConstraint(["course_id", "user_id"], ["courses.id", "courses.user_id"],
+                             name="fk_documents_course_owner"),
+        UniqueConstraint("user_id", "idempotency_key", name="uq_documents_idempotency"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    course_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    idempotency_key: Mapped[str] = mapped_column(String(128))
+    active_version_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DocumentVersion(Base):
+    __tablename__ = "document_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    version_number: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(300))
+    content_hash: Mapped[str] = mapped_column(String(64))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    page_count: Mapped[int] = mapped_column(Integer)
+    # queued | processing | ready | failed | unsupported
+    status: Mapped[str] = mapped_column(String(16))
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    warnings: Mapped[list] = mapped_column(JSONB, server_default="[]")
+    embedding_model: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DocumentPage(Base):
+    __tablename__ = "document_pages"
+
+    version_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("document_versions.id"),
+                                                  primary_key=True)
+    page_number: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    text: Mapped[str] = mapped_column(Text)
+
+
+class DocumentChunk(Base):
+    __tablename__ = "document_chunks"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    document_version_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("document_versions.id"),
+                                                           index=True)
+    chunk_index: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    page_start: Mapped[int] = mapped_column(Integer)
+    page_end: Mapped[int] = mapped_column(Integer)
+    char_start: Mapped[int] = mapped_column(Integer)
+    char_end: Mapped[int] = mapped_column(Integer)
+    embedding_model: Mapped[str] = mapped_column(String(120))
+    embedding: Mapped[list] = mapped_column(Vector(EMBEDDING_DIM))
+
+
+class ChatThread(Base):
+    __tablename__ = "chat_threads"
+    __table_args__ = (
+        ForeignKeyConstraint(["course_id", "user_id"], ["courses.id", "courses.user_id"],
+                             name="fk_chat_threads_course_owner"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    course_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    document_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    __table_args__ = (UniqueConstraint("user_id", "idempotency_key", name="uq_chat_messages_idempotency"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    thread_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("chat_threads.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    role: Mapped[str] = mapped_column(String(16))  # user | assistant
+    content: Mapped[str] = mapped_column(Text)
+    source_refs: Mapped[list] = mapped_column(JSONB, server_default="[]")
+    answerable: Mapped[bool | None] = mapped_column(Boolean)
+    is_demo: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    model_id: Mapped[str | None] = mapped_column(String(120))
+    reply_to: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    job_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
