@@ -27,7 +27,7 @@ val appConfigValues = mapOf(
     "androidApiBaseUrl" to configValue("studyflow.api.baseUrl.android", "STUDYFLOW_API_BASE_URL_ANDROID"),
 )
 
-val generateAppConfig by tasks.registering {
+val generateAppConfig = tasks.register("generateAppConfig") {
     val values = appConfigValues
     val outputDir = layout.buildDirectory.dir("generated/appconfig/kotlin")
     inputs.properties(values)
@@ -107,6 +107,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.koin.android)
+            implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
         }
         jvmMain.dependencies {

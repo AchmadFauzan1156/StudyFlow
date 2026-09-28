@@ -10,11 +10,17 @@ import id.studyflow.data.remote.ApiException
 import id.studyflow.data.remote.ApiJson
 import id.studyflow.data.remote.AttemptDto
 import id.studyflow.data.remote.AttemptSummaryDto
+import id.studyflow.data.remote.ChunkDto
+import id.studyflow.data.remote.DocumentDto
 import id.studyflow.data.remote.JobDto
+import id.studyflow.data.remote.MaterialsApi
+import id.studyflow.data.remote.MessageDto
 import id.studyflow.data.remote.NotAuthenticatedException
 import id.studyflow.data.remote.NoteResultsDto
+import id.studyflow.data.remote.PageDto
 import id.studyflow.data.remote.QuizDto
 import id.studyflow.data.remote.SummaryDto
+import id.studyflow.data.remote.ThreadDto
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
@@ -35,8 +41,53 @@ class AiException(message: String, val code: String? = null) : Exception(message
 class AiRepository(
     private val databases: DatabaseManager,
     private val api: AiApi,
+    private val materials: MaterialsApi,
     private val clock: AppClock,
 ) {
+    /** Server hanya menerima dokumen untuk mata kuliah yang sudah tersinkron. */
+    suspend fun courseSynced(courseId: String): Boolean {
+        val course = databases.db.courseDao().getById(courseId) ?: return false
+        return course.deletedAt == null && !course.pendingSync && course.version > 0
+    }
+
+    // ---------- Dokumen ----------
+
+    suspend fun documents(courseId: String): Loaded<List<DocumentDto>> =
+        cached("documents:$courseId", ListSerializer(DocumentDto.serializer())) { materials.documents(courseId) }
+
+    suspend fun document(id: String): Loaded<DocumentDto> =
+        cached("document:$id", DocumentDto.serializer()) { materials.document(id) }
+
+    suspend fun pages(documentId: String, start: Int, count: Int): Loaded<List<PageDto>> =
+        cached("pages:$documentId:$start:$count", ListSerializer(PageDto.serializer())) {
+            materials.pages(documentId, start, count)
+        }
+
+    suspend fun upload(courseId: String, title: String, fileName: String, bytes: ByteArray, idempotencyKey: String): DocumentDto {
+        if (bytes.size > MAX_UPLOAD_BYTES) {
+            throw AiException("Berkas melebihi ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB", "file_too_large")
+        }
+        return guard { materials.upload(courseId, title, fileName, bytes, idempotencyKey) }
+    }
+
+    suspend fun download(documentId: String): ByteArray = guard { materials.download(documentId) }
+
+    suspend fun deleteDocument(documentId: String) = guard { materials.delete(documentId) }
+
+    suspend fun chunk(chunkId: String): Loaded<ChunkDto> =
+        cached("chunk:$chunkId", ChunkDto.serializer()) { materials.chunk(chunkId) }
+
+    // ---------- Tanya materi ----------
+
+    suspend fun courseThread(courseId: String): Loaded<ThreadDto> =
+        cached("thread:$courseId", ThreadDto.serializer()) { materials.courseThread(courseId) }
+
+    suspend fun ask(threadId: String, question: String, idempotencyKey: String): MessageDto =
+        guard { materials.ask(threadId, question, idempotencyKey) }
+
+    suspend fun messages(threadId: String): Loaded<List<MessageDto>> =
+        cached("messages:$threadId", ListSerializer(MessageDto.serializer())) { materials.messages(threadId) }
+
     suspend fun noteReadiness(noteId: String): NoteReadiness {
         val note = databases.db.noteDao().getById(noteId) ?: return NoteReadiness.NotFound
         if (note.deletedAt != null) return NoteReadiness.NotFound
@@ -81,6 +132,11 @@ class AiRepository(
         databases.db.settingsDao().put(SettingEntity(consentKey(providerLabel), clock.nowMillis().toString()))
 
     private fun consentKey(label: String) = "ai_consent:$label"
+
+    companion object {
+        /** Sama dengan batas default server (STUDYFLOW_DOCUMENT_MAX_BYTES); server tetap yang menentukan. */
+        const val MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+    }
 
     private suspend fun <T> cached(key: String, serializer: KSerializer<T>, fetch: suspend () -> T): Loaded<T> =
         try {

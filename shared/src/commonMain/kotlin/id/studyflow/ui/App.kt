@@ -49,6 +49,9 @@ import id.studyflow.ui.account.ImportLocalDialog
 import id.studyflow.ui.courses.CourseDetailScreen
 import id.studyflow.ui.courses.CoursesScreen
 import id.studyflow.ui.dashboard.HomeScreen
+import id.studyflow.ui.materials.AskScreen
+import id.studyflow.ui.materials.DocumentScreen
+import id.studyflow.ui.materials.SourceScreen
 import id.studyflow.ui.notes.NoteEditorScreen
 import id.studyflow.ui.progress.ProgressScreen
 import id.studyflow.ui.settings.SettingsScreen
@@ -182,7 +185,20 @@ private fun StudyFlowNavHost(navController: NavHostController, modifier: Modifie
                 onOpenNote = { noteId -> navController.navigate(NoteEditorRoute(route.courseId, noteId)) },
                 onOpenTask = { taskId -> navController.navigate(TaskEditorRoute(route.courseId, taskId)) },
                 onOpenStudy = { noteId -> navController.navigate(StudyNoteRoute(noteId)) },
+                onOpenDocument = { navController.navigate(DocumentRoute(it)) },
+                onOpenAsk = { name -> navController.navigate(AskRoute(route.courseId, name)) },
             )
+        }
+        composable<DocumentRoute> { entry ->
+            DocumentScreen(entry.toRoute<DocumentRoute>().documentId, onBack = { navController.popBackStack() })
+        }
+        composable<AskRoute> { entry ->
+            val route = entry.toRoute<AskRoute>()
+            AskScreen(route.courseId, route.courseName, onBack = { navController.popBackStack() },
+                onOpenSource = { navController.navigate(SourceRoute(it)) })
+        }
+        composable<SourceRoute> { entry ->
+            SourceScreen(entry.toRoute<SourceRoute>().chunkId, onBack = { navController.popBackStack() })
         }
         composable<StudyNoteRoute> { entry ->
             val route = entry.toRoute<StudyNoteRoute>()

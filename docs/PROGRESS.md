@@ -1,5 +1,73 @@
 # Progres
 
+## Checkpoint 4 — Fase 4: PDF dan tanya materi, provider Gemini (29 September 2026)
+
+Keputusan pemilik proyek: provider AI diganti dari Groq ke **Google Gemini** (gratis) untuk generasi dan embedding. Rincian di [DECISIONS.md](DECISIONS.md) #49–#64.
+
+### Selesai
+
+**Backend**
+- Adapter Gemini native:
+  - `gemini-3.8-flash` lewat `generateContent` dengan `responseJsonSchema`.
+  - `gemini-embedding-001` 768 dimensi lewat `batchEmbedContents` dengan normalisasi L2.
+  - Key lewat header `x-goog-api-key`.
+  - Groq tetap tersedia sebagai `openai_compatible`.
+- Pemberitahuan data free tier Gemini yang jujur: data dipakai Google, bisa dibaca peninjau manusia, jangan kirim data sensitif, usia 18+.
+- Unggah PDF: batas ukuran, signature, enkripsi, jumlah halaman, idempotency, dan kuota unggah terpisah. Storage lokal atau Supabase (bucket privat).
+- Worker:
+  - Ekstraksi teks per halaman di proses terpisah dengan batas waktu; PDF scan diberi status `unsupported`.
+  - Peringatan halaman tanpa teks dan kemungkinan rumus/tabel rusak.
+  - Chunking dengan nomor halaman, embedding, dan publikasi atomik yang dijaga lease.
+  - Cleanup dokumen yang bisa diulang.
+- Tanya materi:
+  - Retrieval pgvector yang selalu difilter pengguna, mata kuliah, versi aktif, dan model embedding, dengan ambang jarak.
+  - Tanpa konteks, model tidak dipanggil.
+  - ID sumber dari model divalidasi; judul dan halaman dipetakan dari database.
+- Endpoint dokumen, pratinjau halaman, unduh privat, hapus, cuplikan sumber, thread, dan pesan. Detail di [API.md](API.md).
+- Migrasi `0003` (pgvector, dokumen, halaman, potongan, thread, pesan; RLS default-deny).
+- Fixture evaluasi RAG (3 materi, 6 pertanyaan, 2 di luar materi) dan `python -m app.eval.rag_eval` untuk kalibrasi ambang dengan Gemini.
+
+**Aplikasi**
+- Tab **Materi**:
+  - Unggah PDF lewat pemilih berkas (Android `OpenDocument`, desktop dialog berkas) dengan persetujuan pengiriman data.
+  - Status (Diproses/Siap/Tidak didukung/Gagal) dengan polling otomatis.
+  - "Coba lagi" setelah gagal jaringan memakai Idempotency-Key yang sama.
+  - Hapus dengan konfirmasi.
+- **Detail dokumen**: pratinjau teks per halaman (bertahap), peringatan ekstraksi, "Buka PDF" (penampil bawaan; Android lewat `FileProvider`), dan hapus.
+- **Tanya materi** (dari tab Belajar):
+  - Percakapan per mata kuliah, dengan persetujuan sebelum pertanyaan pertama.
+  - Indikator saat jawaban diproses, dan label demo.
+  - Chip sumber "judul · hal. x–y" yang membuka layar **Sumber** (cuplikan, rentang halaman fisik, Buka PDF).
+- Daftar dokumen, pratinjau, pesan, dan cuplikan di-cache per akun sehingga bisa dibaca offline.
+
+### Perintah yang dijalankan dan hasilnya
+
+| Perintah | Hasil |
+|---|---|
+| `uv run pytest` dengan `STUDYFLOW_TEST_DATABASE_URL` (PostgreSQL + pgvector) | 107 lulus. Termasuk tes unit Gemini (bentuk request, key tidak di URL, bagian thought, MAX_TOKENS/SAFETY/blockReason, 429, batching dan normalisasi embedding, dimensi salah), PDF (signature, ukuran, halaman, enkripsi, rusak, ekstraksi subprocess, deteksi scan), chunking, storage (path traversal, REST Supabase), dan integrasi fase 4 (unggah → index → pratinjau → unduh; idempotensi; 4 jenis penolakan; scan → unsupported; kuota unggah; akses lintas akun 404; jawaban hanya bersumber dari dokumen sendiri meski akun lain punya dokumen serupa; pertanyaan di luar materi tanpa memanggil model dan kuota kembali; ID sumber karangan ditolak setelah satu retry; tanya idempotent; hapus → berkas, teks, dan embedding dibersihkan dan retrieval tidak lagi menemukannya; dokumen dihapus saat indexing tidak dipublikasikan; baseline evaluasi RAG). |
+| `uv run ruff check .` | Bersih |
+| `gradlew clean :shared:jvmTest --rerun-tasks` (E2E aktif, API + worker provider demo) | 59 lulus, termasuk 5 `MaterialsTest` (multipart + Idempotency-Key, berkas terlalu besar ditolak sebelum dikirim, daftar dokumen offline, sumber terhapus tidak diambil dari cache, mata kuliah harus tersinkron) dan E2E unggah PDF sungguhan → indexing → pratinjau → unduh → tanya → sumber → akun lain ditolak → hapus. |
+| `gradlew :androidApp:assembleDebug :desktopApp:jar` | Berhasil tanpa peringatan di kode proyek |
+| Uji manual desktop (auth tiruan + API + worker demo) | Tab Materi → Unggah PDF lewat dialog berkas Windows → dialog persetujuan → "Diproses…" berubah menjadi "Siap" → pratinjau 3 halaman → Belajar → Tanya materi → persetujuan → jawaban dengan chip sumber → layar Sumber dengan cuplikan dan halaman |
+
+### Keterbatasan dan hambatan
+
+- **Belum diuji dengan Gemini sungguhan.** API key harus dibuat sendiri oleh pemilik proyek. Adapter mengikuti dokumentasi resmi (dicek 28–29 Sep 2026) dan diuji dengan transport tiruan. Langkah verifikasi:
+  1. Isi `STUDYFLOW_AI_PROVIDER=gemini`, `STUDYFLOW_EMBEDDING_PROVIDER=gemini`, dan `STUDYFLOW_AI_API_KEY`.
+  2. Jalankan `python -m app.eval.rag_eval`, lalu atur `STUDYFLOW_RAG_MAX_DISTANCE` dari hasilnya.
+  3. Uji kuis dan tanya materi pada 2–3 materi contoh dan periksa manual.
+- Dokumentasi Gemini menandai `taskType`/`outputDimensionality` tingkat atas sebagai deprecated dan menyarankan `embedContentConfig` (yang dipakai). Jika API menolak field ini, penyesuaiannya ada di `app/providers/gemini.py`.
+- Angka batas free tier Gemini tidak tercantum di dokumentasi (hanya di AI Studio); kuota default dibuat konservatif.
+- Ekstraksi PDF dibatasi waktu, tetapi tidak dibatasi memori (tidak portabel di Windows).
+- Belum ada rangkuman dokumen panjang per bagian, unggah versi baru untuk dokumen yang sama, thread per dokumen di UI, indeks ANN, atau OCR.
+- Android: unggah dan buka PDF sudah dikompilasi, tetapi belum diuji manual di emulator pada checkpoint ini.
+
+### Langkah berikutnya (fase 5)
+
+Lihat [PLAN.md](PLAN.md#langkah-fase-5-rinci): progres per topik tanpa soal yang dilaporkan, rekomendasi latihan rule-based, dan flashcard. Sebaiknya kalibrasi RAG dengan Gemini lebih dulu.
+
+---
+
 ## Checkpoint 3 — Fase 3: rangkuman dan kuis AI gratis (28 September 2026)
 
 Keputusan pemilik proyek: memakai **model AI gratis** dengan pembatasan. Dipilih Groq free plan (`openai/gpt-oss-120b`); perbandingan dan alasannya di [DECISIONS.md](DECISIONS.md) #36–#48.

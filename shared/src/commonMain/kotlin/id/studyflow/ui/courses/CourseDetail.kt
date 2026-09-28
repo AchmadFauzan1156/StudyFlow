@@ -54,6 +54,7 @@ import id.studyflow.ui.components.ConfirmDeleteDialog
 import id.studyflow.ui.components.EmptyState
 import id.studyflow.ui.components.InfoCard
 import id.studyflow.ui.components.TaskRow
+import id.studyflow.ui.materials.MaterialsTab
 import id.studyflow.ui.study.StudyTab
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -139,6 +140,8 @@ fun CourseDetailScreen(
     onOpenNote: (String?) -> Unit,
     onOpenTask: (String?) -> Unit,
     onOpenStudy: (String) -> Unit,
+    onOpenDocument: (String) -> Unit,
+    onOpenAsk: (courseName: String) -> Unit,
 ) {
     val viewModel = koinViewModel<CourseDetailViewModel>(key = "course-$courseId") { parametersOf(courseId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -192,14 +195,9 @@ fun CourseDetailScreen(
                 val contentModifier = Modifier.widthIn(max = 840.dp).fillMaxWidth()
                 when (selectedTab) {
                     TAB_NOTES -> NotesTab(state.notes, state.zone, onOpenNote, contentModifier)
-                    1 -> PlaceholderTab(
-                        "Materi PDF",
-                        "Unggah PDF berbasis teks akan tersedia setelah akun dan sinkronisasi aktif. " +
-                            "PDF hasil scan belum didukung.",
-                        contentModifier,
-                    )
+                    1 -> MaterialsTab(courseId, onOpenDocument, contentModifier)
                     TAB_TASKS -> TasksTab(state, onOpenTask, viewModel::toggleDone, contentModifier)
-                    else -> StudyTab(state.notes, onOpenStudy, contentModifier)
+                    else -> StudyTab(state.notes, onOpenStudy, { onOpenAsk(course?.name.orEmpty()) }, contentModifier)
                 }
             }
         }
@@ -289,12 +287,5 @@ private fun TasksTab(
                 onClick = { onOpenTask(task.id) },
             )
         }
-    }
-}
-
-@Composable
-private fun PlaceholderTab(title: String, message: String, modifier: Modifier) {
-    Column(modifier.padding(16.dp)) {
-        InfoCard(title = title, message = message)
     }
 }

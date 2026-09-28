@@ -70,3 +70,31 @@ Format: keputusan — alasan. Keputusan produk utama mengikuti spesifikasi arsit
 46. **Kuis dikerjakan online** (spesifikasi): rangkuman, kuis, dan hasil yang pernah dibuka di-cache di tabel Room `remote_cache` (database per akun), jadi bisa dibaca offline dengan label "Offline". Status "soal sudah dilaporkan" belum disimpan di klien; server mengabaikan laporan ganda.
 47. **Persetujuan pengiriman data diminta sekali per akun per provider** — teks pemberitahuan berasal dari server (`STUDYFLOW_AI_DATA_NOTICE`), sehingga tetap akurat jika provider diganti. Mode demo diberi label "Demo, bukan AI" di semua layar.
 48. **`httpx2` sebagai klien HTTP runtime** — penerus httpx yang direkomendasikan Starlette; API-nya sama dengan httpx, dan juga dipakai untuk TestClient.
+
+## Fase 4 dan penggantian provider ke Gemini
+
+49. **Provider AI default diganti dari Groq ke Google Gemini** — atas permintaan pemilik proyek (29 Sep 2026), agar satu penyedia gratis melayani generasi dan embedding. Keputusan #36 (Groq sebagai default) digantikan; Groq tetap tersedia sebagai `openai_compatible`.
+50. **API native Gemini, bukan endpoint kompatibel OpenAI** — dokumentasi resmi menyebut endpoint kompatibel OpenAI masih beta, dan dukungan `strict` untuk schema tidak didokumentasikan.
+    - Generasi: `models/{model}:generateContent` dengan `responseMimeType: application/json` dan `responseJsonSchema`.
+    - API key dikirim lewat header `x-goog-api-key`, tidak pernah di URL.
+    - Bagian `thought` di respons diabaikan.
+    - `finishReason` `MAX_TOKENS` dianggap output tidak valid; `SAFETY`/`blockReason` dianggap ditolak.
+51. **Model: `gemini-3.8-flash` (generasi) dan `gemini-embedding-001` (embedding)** — keduanya berstatus stable di dokumentasi. `gemini-embedding-2` tidak dipakai karena dokumentasinya menyebut dua nama berbeda (`-2` dan `-2-preview`).
+52. **Embedding 768 dimensi dengan normalisasi L2 manual** — dokumentasi mewajibkan normalisasi untuk `gemini-embedding-001` pada dimensi selain 3072. Dimensi dikunci di migrasi `0003` (`vector(768)`), sehingga mengganti model atau dimensi berarti migrasi dan reindex. Kolom `embedding_model` mencegah pencampuran ruang embedding saat retrieval. `taskType` `RETRIEVAL_DOCUMENT`/`RETRIEVAL_QUERY` dan `title` dokumen dikirim lewat `embedContentConfig`.
+53. **Pemberitahuan data Gemini yang jujur** — sesuai ketentuan layanan gratis Gemini API:
+    - Isi dan hasil dipakai Google untuk meningkatkan produk dan dapat dibaca peninjau manusia.
+    - Jangan kirim informasi sensitif, rahasia, atau pribadi.
+    - Layanan untuk usia 18+.
+
+    Teks ini default untuk provider `gemini` dan ditampilkan sebelum catatan, pertanyaan, atau PDF dikirim.
+54. **Batas default diturunkan untuk Gemini** — 200 permintaan AI global per hari dan jeda 6 detik, karena angka batas free tier Gemini hanya terlihat di AI Studio (tidak tercantum di dokumentasi). Kegagalan 429 tetap dijadwalkan ulang.
+55. **Dokumen adalah entity server-only (tidak lewat protokol sinkronisasi)** — aplikasi membaca daftar dokumen lewat API dan meng-cache-nya per akun. Mata kuliah harus sudah tersinkron (FK kepemilikan `(course_id, user_id)` di server).
+56. **Validasi unggah di API, ekstraksi di worker** — API memeriksa ukuran, signature `%PDF-`, enkripsi, dan jumlah halaman sebelum menyimpan. Worker mengekstrak teks per halaman dengan pypdf di **proses terpisah** yang punya batas waktu. Batas memori tidak diterapkan karena tidak portabel di Windows (dicatat sebagai keterbatasan). PDF dengan teks total < 200 karakter dianggap scan dan berstatus `unsupported`.
+57. **Chunk ±450 kata dengan overlap ±70 kata** (≈600/90 token) memakai nomor halaman fisik dan offset karakter — parameter percobaan yang bisa diubah lewat environment.
+58. **Publikasi indexing atomik dan dijaga lease** — halaman, potongan, dan `active_version_id` ditulis dalam satu transaksi oleh pemegang lease. Jika dokumen dihapus saat diproses, hasil tidak dipublikasikan.
+59. **Exact search pgvector (tanpa indeks ANN)** sesuai spesifikasi. Indeks HNSW ditambahkan setelah volume data terukur membutuhkannya.
+60. **Tanpa konteks yang cukup, model tidak dipanggil** — ambang `rag_max_distance` menentukan relevansi. Nilai default 0,55 adalah perkiraan awal yang **wajib dikalibrasi** dengan `app.eval.rag_eval` memakai Gemini; skor kemiripan bukan probabilitas kebenaran.
+61. **Model hanya menerima ID pendek sumber (`S1…`)** — server menolak ID di luar hasil retrieval, lalu memetakan judul dan halaman dari database. Ini mencegah sumber fiktif, tetapi tidak membuktikan kebenaran jawaban; tombol cuplikan sumber tersedia untuk verifikasi pengguna.
+62. **Satu thread tanya materi per mata kuliah** (thread per dokumen didukung API, belum di UI). Riwayat pesan di-cache per akun untuk dibaca offline.
+63. **Storage: folder lokal untuk development, Supabase Storage bucket privat untuk produksi** lewat REST (`POST/GET /storage/v1/object/{bucket}/{key}`, `DELETE` dengan `prefixes`) dan secret key yang hanya ada di backend. Key berkas acak dengan prefix pemilik dan tidak memuat nama berkas asli. Cleanup dijalankan sebagai job yang bisa diulang.
+64. **Membuka PDF memakai penampil bawaan platform** — desktop membuka berkas sementara lewat `java.awt.Desktop`, Android lewat `FileProvider` (cache privat, izin baca sementara). Penampil bawaan tidak bisa diarahkan ke halaman tertentu, jadi aplikasi menampilkan nomor halaman dan cuplikannya.

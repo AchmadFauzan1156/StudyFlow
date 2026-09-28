@@ -63,17 +63,17 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 @Composable
-private fun Label(text: String, container: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color) {
+internal fun Label(text: String, container: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color) {
     Surface(color = container, contentColor = content, shape = MaterialTheme.shapes.small) {
         Text(text, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
     }
 }
 
 @Composable
-private fun DemoLabel() = Label("Demo, bukan AI", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
+internal fun DemoLabel() = Label("Demo, bukan AI", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
 
 @Composable
-private fun OfflineNote() = Text(
+internal fun OfflineNote() = Text(
     "Offline: menampilkan salinan tersimpan.",
     style = MaterialTheme.typography.bodySmall,
     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -81,7 +81,7 @@ private fun OfflineNote() = Text(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StudyScaffold(title: String, onBack: () -> Unit, content: @Composable (Modifier) -> Unit) {
+internal fun StudyScaffold(title: String, onBack: () -> Unit, content: @Composable (Modifier) -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -101,7 +101,7 @@ private fun StudyScaffold(title: String, onBack: () -> Unit, content: @Composabl
 // ---------- Tab Belajar pada detail mata kuliah ----------
 
 @Composable
-fun StudyTab(notes: List<Note>, onOpenNote: (String) -> Unit, modifier: Modifier) {
+fun StudyTab(notes: List<Note>, onOpenNote: (String) -> Unit, onOpenAsk: () -> Unit, modifier: Modifier) {
     val session = koinInject<SessionManager>()
     val auth by session.state.collectAsStateWithLifecycle()
     Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -110,8 +110,21 @@ fun StudyTab(notes: List<Note>, onOpenNote: (String) -> Unit, modifier: Modifier
                 "Belajar dengan AI",
                 "Rangkuman dan kuis dari catatan membutuhkan akun dan koneksi internet. Masuk dari menu Pengaturan.",
             )
-            notes.isEmpty() -> EmptyState("Belum ada catatan", "Tulis catatan dulu, lalu buat rangkuman atau kuis darinya.")
             else -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAsk),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Tanya materi", style = MaterialTheme.typography.titleSmall)
+                        Text("Ajukan pertanyaan; jawaban diambil dari PDF di tab Materi beserta halaman sumbernya.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                if (notes.isEmpty()) {
+                    EmptyState("Belum ada catatan", "Tulis catatan untuk membuat rangkuman atau kuis darinya.")
+                    return@Column
+                }
                 Text("Pilih catatan untuk dirangkum atau dijadikan kuis.", style = MaterialTheme.typography.bodyMedium)
                 notes.forEach { note ->
                     Card(

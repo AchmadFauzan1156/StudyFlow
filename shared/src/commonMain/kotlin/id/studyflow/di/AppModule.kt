@@ -10,6 +10,7 @@ import id.studyflow.data.ai.AiRepository
 import id.studyflow.data.remote.AiApi
 import id.studyflow.data.remote.ApiCaller
 import id.studyflow.data.remote.AuthApi
+import id.studyflow.data.remote.MaterialsApi
 import id.studyflow.data.remote.ServerConfig
 import id.studyflow.data.remote.SyncApi
 import id.studyflow.data.repository.CourseRepository
@@ -27,6 +28,10 @@ import id.studyflow.ui.account.ConflictsViewModel
 import id.studyflow.ui.courses.CourseDetailViewModel
 import id.studyflow.ui.courses.CoursesViewModel
 import id.studyflow.ui.dashboard.HomeViewModel
+import id.studyflow.ui.materials.AskViewModel
+import id.studyflow.ui.materials.DocumentViewModel
+import id.studyflow.ui.materials.MaterialsViewModel
+import id.studyflow.ui.materials.SourceViewModel
 import id.studyflow.ui.notes.NoteEditorViewModel
 import id.studyflow.ui.progress.ProgressViewModel
 import id.studyflow.ui.settings.SettingsViewModel
@@ -60,7 +65,8 @@ val dataModule = module {
     single { ApiCaller(get(), baseUrl = { get<ServerConfig>().apiBaseUrl }, tokens = get<SessionManager>()) }
     single { SyncApi(get()) }
     single { AiApi(get()) }
-    single { AiRepository(get(), get(), get()) }
+    single { MaterialsApi(get()) }
+    single { AiRepository(get(), get(), get(), get()) }
     single { SyncEngine(get(), get(), get()) }
     single { SyncManager(get(), get(), get(), get(), get()) }
     single { ConflictRepository(get(), get()) }
@@ -82,6 +88,10 @@ val viewModelModule = module {
     viewModel { params -> SummaryViewModel(params.get(), get()) }
     viewModel { params -> QuizViewModel(params[0], params[1], get(), get()) }
     viewModel { QuizHistoryViewModel(get()) }
+    viewModel { params -> MaterialsViewModel(params.get(), get(), get(), get()) }
+    viewModel { params -> DocumentViewModel(params.get(), get()) }
+    viewModel { params -> AskViewModel(params.get(), get(), get()) }
+    viewModel { params -> SourceViewModel(params.get(), get()) }
 }
 
 fun initKoin(platformModule: Module, appDeclaration: KoinAppDeclaration = {}) = startKoin {

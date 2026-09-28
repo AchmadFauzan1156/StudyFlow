@@ -14,3 +14,6 @@ import kotlinx.serialization.Serializable
 @Serializable data class StudyNoteRoute(val noteId: String)
 @Serializable data class SummaryRoute(val summaryId: String)
 @Serializable data class QuizRoute(val quizId: String, val attemptId: String? = null)
+@Serializable data class DocumentRoute(val documentId: String)
+@Serializable data class AskRoute(val courseId: String, val courseName: String)
+@Serializable data class SourceRoute(val chunkId: String)

@@ -7,6 +7,7 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.plugin
 import kotlinx.coroutines.flow.first
+import id.studyflow.data.ai.AiException
 import id.studyflow.data.ai.NoteReadiness
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -172,5 +173,60 @@ class TwoDeviceE2ETest {
         assertTrue(attempt.results.all { r -> r.sources.single().title == "RSA" })
         assertEquals(listOf(attempt.id), d.ai.attempts().value.map { it.id })
         assertEquals(1, d.ai.noteResults(noteId).value.results.count { it.type == "quiz" })
+    }
+
+    /** Unggah PDF → indexing worker → tanya materi → jawaban bersumber. Butuh worker dan embedding demo. */
+    @Test
+    fun uploadPdfAndAskWithSources() = runBlocking<Unit> {
+        if (!enabled || System.getenv("STUDYFLOW_E2E_AI") != "1") return@runBlocking
+        val alice = device(UUID.randomUUID().toString())
+        val courseId = alice.courses.create("Kriptografi", null)
+        alice.sync.syncOnce()
+        assertTrue(alice.ai.courseSynced(courseId))
+
+        val pdf = testPdf(
+            listOf(
+                "Kriptografi kunci publik memakai sepasang kunci. Kunci publik boleh dibagikan, kunci privat dirahasiakan.",
+                "Algoritma RSA memilih dua bilangan prima besar p dan q. Modulus n dihitung sebagai hasil kali p dan q. " +
+                    "Keamanan RSA bergantung pada sulitnya memfaktorkan modulus n.",
+            ),
+        )
+        val key = UUID.randomUUID().toString()
+        val uploaded = alice.ai.upload(courseId, "Materi RSA", "rsa.pdf", pdf, key)
+        assertEquals(uploaded.id, alice.ai.upload(courseId, "Materi RSA", "rsa.pdf", pdf, key).id, "unggah idempotent")
+
+        var doc = uploaded
+        withTimeout(60_000) {
+            while (doc.isProcessing) {
+                delay(500)
+                doc = alice.ai.document(uploaded.id).value
+            }
+        }
+        assertEquals("ready", doc.status, doc.toString())
+        assertEquals(2, doc.pageCount)
+        assertTrue(alice.ai.pages(doc.id, 2, 1).value.single().text.contains("Modulus n"))
+        assertTrue(alice.ai.download(doc.id).decodeToString().startsWith("%PDF-"))
+
+        val thread = alice.ai.courseThread(courseId).value
+        alice.ai.ask(thread.id, "Bagaimana modulus n pada RSA dihitung?", UUID.randomUUID().toString())
+        var messages = alice.ai.messages(thread.id).value
+        withTimeout(60_000) {
+            while (messages.none { it.role == "assistant" }) {
+                delay(500)
+                messages = alice.ai.messages(thread.id).value
+            }
+        }
+        val answer = messages.last()
+        assertEquals(true, answer.answerable)
+        val source = answer.sources.first()
+        assertEquals("Materi RSA", source.documentTitle)
+        assertEquals("Materi RSA", alice.ai.chunk(source.chunkId).value.documentTitle)
+
+        // Akun lain tidak melihat dokumen maupun sumbernya.
+        val bob = device(UUID.randomUUID().toString())
+        assertFailsWith<AiException> { bob.ai.chunk(source.chunkId) }
+
+        alice.ai.deleteDocument(doc.id)
+        assertTrue(alice.ai.documents(courseId).value.isEmpty())
     }
 }

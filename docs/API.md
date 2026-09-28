@@ -1,6 +1,6 @@
 # Kontrak API
 
-Status: endpoint kesehatan, akun, sinkronisasi (fase 2), dan AI catatan (fase 3) sudah diimplementasikan. Endpoint dokumen/RAG (fase 4) masih rancangan.
+Status: endpoint kesehatan, akun, sinkronisasi (fase 2), AI catatan (fase 3), serta dokumen dan tanya materi (fase 4) sudah diimplementasikan.
 
 ## Konvensi
 
@@ -138,17 +138,47 @@ Alur worker:
 5. Jika provider membalas 429, 5xx, atau timeout, jadwalkan ulang (menghormati `Retry-After`, backoff 15 detik sampai 10 menit, maks. `ai_max_attempts`).
 6. Tulis hasil hanya jika lease masih dipegang worker itu.
 
+### Dokumen PDF dan tanya materi (fase 4)
+
+| Endpoint | Fungsi |
+|---|---|
+| `POST /v1/documents` | Multipart: `file` (PDF), `course_id`, `title` (opsional) dan header `Idempotency-Key` → **202** `{id, course_id, title, status, error_code, page_count, size_bytes, warnings, version_id, job_id, created_at}` |
+| `GET /v1/documents?course_id=` | Dokumen milik pengguna di mata kuliah itu (tanpa yang dihapus) |
+| `GET /v1/documents/{id}` | Metadata dan status: `queued`, `processing`, `ready`, `failed`, `unsupported` |
+| `GET /v1/documents/{id}/pages?start=&count=` | Pratinjau teks hasil ekstraksi (maks. 20 halaman per permintaan) |
+| `GET /v1/documents/{id}/download` | Berkas PDF setelah cek kepemilikan (`Cache-Control: private, no-store`) |
+| `DELETE /v1/documents/{id}` | Tombstone, membatalkan job indexing yang belum berjalan, dan menjadwalkan cleanup berkas/teks/embedding yang bisa diulang → 204 |
+| `GET /v1/chunks/{id}` | Cuplikan sumber: `document_title`, `page_start`, `page_end`, `text`. 404 jika dokumen dihapus atau milik akun lain |
+| `POST /v1/chat/threads` | `{course_id}` → thread tanya materi untuk mata kuliah itu (dibuat sekali, lalu dipakai ulang) |
+| `POST /v1/chat/threads/{id}/messages` | `{content}` dan header `Idempotency-Key` → **202** pesan pengguna dengan `job_status` |
+| `GET /v1/chat/threads/{id}/messages` | Pesan pengguna dan jawaban. Jawaban memuat `answerable`, `is_demo`, dan `sources[{chunk_id, document_id, document_title, page_start, page_end, excerpt}]` |
+
+Validasi unggah (sebelum disimpan):
+
+| Kondisi | Status | `code` |
+|---|---|---|
+| Berkas lebih dari `document_max_bytes` (default 10 MB) | 413 | `file_too_large` |
+| Tidak diawali signature `%PDF-` (ekstensi tidak dipercaya) | 422 | `not_pdf` |
+| Terkunci password | 422 | `pdf_encrypted` |
+| Rusak atau tanpa halaman | 422 | `pdf_invalid` |
+| Lebih dari `document_max_pages` (default 100) | 413 | `too_many_pages` |
+| Kuota unggah harian habis (terpisah dari kuota AI) | 429 | `quota_exceeded` |
+
+Hasil indexing (`error_code` versi):
+- **`pdf_no_text`:** status `unsupported`; PDF scan belum didukung (tanpa OCR).
+- **`extract_timeout`, `pdf_invalid`:** status `failed`.
+- **Peringatan:** halaman tanpa teks dan kemungkinan rumus/tabel rusak dikembalikan di `warnings`.
+
+Alur tanya materi di worker:
+1. Buat embedding pertanyaan (`RETRIEVAL_QUERY`).
+2. Cari potongan hanya di dokumen milik pengguna, pada mata kuliah itu, dengan versi aktif dan model embedding yang sama (exact search pgvector, top-k = `rag_top_k`, jarak ≤ `rag_max_distance`).
+3. Jika tidak ada potongan yang cukup dekat, jawab "materi belum memuat jawabannya" **tanpa memanggil model**, dan kuota dikembalikan.
+4. Jika ada, potongan dikirim dengan ID pendek (`S1…`). Model harus mengembalikan `source_ids` dari daftar itu; ID lain dianggap output tidak valid (coba ulang sekali, lalu gagal).
+5. Judul dan halaman sumber diambil server dari metadata, bukan dari teks model.
+
 ## Rancangan
 
-| Endpoint | Fungsi | Fase |
-|---|---|---|
-| `POST /v1/documents` | Multipart PDF + `course_id` → 202 | 4 |
-| `GET /v1/documents/{id}` | Metadata dan status | 4 |
-| `GET /v1/documents/{id}/download` | Unduh privat setelah cek kepemilikan | 4 |
-| `DELETE /v1/documents/{id}` | Tombstone + job cleanup | 4 |
-| `POST /v1/chat/threads` | Thread dalam scope mata kuliah | 4 |
-| `POST /v1/chat/threads/{id}/messages` | Pertanyaan → 202 + `job_id` | 4 |
-| `GET /v1/chat/threads/{id}/messages` | Pesan + sumber | 4 |
+Semua endpoint dari spesifikasi bagian 10 sudah diimplementasikan. Yang belum: rangkuman dokumen panjang per bagian dan unggah versi baru untuk dokumen yang sama.
 
 ## Schema output AI (sudah ada di `backend/app/domain/schemas.py`)
 

@@ -13,6 +13,7 @@ import id.studyflow.data.ai.AiRepository
 import id.studyflow.data.remote.AiApi
 import id.studyflow.data.remote.ApiCaller
 import id.studyflow.data.remote.AuthApi
+import id.studyflow.data.remote.MaterialsApi
 import id.studyflow.data.remote.ServerConfig
 import id.studyflow.data.remote.SyncApi
 import id.studyflow.data.remote.studyFlowDefaults
@@ -71,7 +72,7 @@ class Device(
     val http = HttpClient(engine) { studyFlowDefaults() }
     val apiCaller = ApiCaller(http, { apiBaseUrl }, tokens)
     val sync = SyncEngine(databases, SyncApi(apiCaller), clock)
-    val ai = AiRepository(databases, AiApi(apiCaller), clock)
+    val ai = AiRepository(databases, AiApi(apiCaller), MaterialsApi(apiCaller), clock)
 
     fun session(store: SecureSessionStore = MemorySessionStore(), config: ServerConfig = testServerConfig) =
         SessionManager(config, AuthApi(http, config), store, databases, clock)
