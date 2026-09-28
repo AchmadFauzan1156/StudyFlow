@@ -1,0 +1,17 @@
+# PostgreSQL lokal untuk development dan tes integrasi (bukan untuk produksi).
+# Image pgvector dipakai agar fase 4 (RAG) tidak perlu mengganti database.
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: studyflow
+      POSTGRES_PASSWORD: studyflow-dev
+      POSTGRES_DB: studyflow
+    ports:
+      - "54329:5432"
+    volumes:
+      - studyflow-db:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  studyflow-db:
