@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import ai, documents, health, sync
+from app.api import ai, documents, health, progress, sync
 from app.api.errors import install_error_handling
 from app.core.config import get_settings
 
@@ -22,6 +22,7 @@ def create_app() -> FastAPI:
     app.include_router(sync.router)
     app.include_router(ai.router)
     app.include_router(documents.router)
+    app.include_router(progress.router)
     return app
 
 

@@ -114,6 +114,12 @@ class Settings(BaseSettings):
     index_user_daily_limit: int = 20
     index_global_daily_limit: int = 200
 
+    # ---------- Progres & latihan (fase 5) ----------
+    # Ambang keputusan produk (bukan ukuran ilmiah): minimal N jawaban pada topik dan akurasi di bawah ambang.
+    practice_min_answers: int = 5
+    practice_accuracy_threshold: float = 0.6
+    flashcard_batch: int = 20
+
     @model_validator(mode="after")
     def _validate(self) -> "Settings":
         if AIProviderKind.FAKE is self.ai_provider and self.app_env is AppEnv.PRODUCTION:

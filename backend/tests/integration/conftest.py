@@ -27,7 +27,7 @@ JWT_SECRET = "test-secret-with-at-least-32-bytes-000"
 pytestmark = pytest.mark.skipif(not TEST_DB_URL, reason="STUDYFLOW_TEST_DATABASE_URL tidak diset")
 
 _DATA_TABLES = (
-    "chat_messages, chat_threads, document_chunks, document_pages, document_versions, documents, "
+    "flashcard_reviews, chat_messages, chat_threads, document_chunks, document_pages, document_versions, documents, "
     "usage_records, ai_usage_daily, question_reports, answers, attempts, question_keys, questions, "
     "quizzes, summaries, ai_jobs, sync_mutations, sync_changes, sync_counters, tasks, notes, courses, profiles"
 )

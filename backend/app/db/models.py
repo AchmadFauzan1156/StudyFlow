@@ -360,3 +360,18 @@ class ChatMessage(Base):
     job_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     idempotency_key: Mapped[str | None] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ---------- Fase 5: flashcard ----------
+
+
+class FlashcardReview(Base):
+    """Jadwal ulang (sistem Leitner) untuk soal yang pernah dijawab salah."""
+
+    __tablename__ = "flashcard_reviews"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    question_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("questions.id"), primary_key=True)
+    box: Mapped[int] = mapped_column(Integer)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
