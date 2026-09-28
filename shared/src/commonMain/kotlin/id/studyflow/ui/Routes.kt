@@ -9,3 +9,5 @@ import kotlinx.serialization.Serializable
 @Serializable data class CourseDetailRoute(val courseId: String, val initialTab: Int = 0)
 @Serializable data class NoteEditorRoute(val courseId: String, val noteId: String? = null)
 @Serializable data class TaskEditorRoute(val courseId: String, val taskId: String? = null)
+@Serializable data object AuthRoute
+@Serializable data object ConflictsRoute

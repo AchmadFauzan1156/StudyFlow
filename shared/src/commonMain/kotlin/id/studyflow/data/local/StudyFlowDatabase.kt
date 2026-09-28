@@ -1,5 +1,6 @@
 package id.studyflow.data.local
 
+import androidx.room.AutoMigration
 import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -15,9 +16,11 @@ import kotlinx.coroutines.IO
         TaskEntity::class,
         OutboxEntity::class,
         SettingEntity::class,
+        ConflictEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 @ConstructedBy(StudyFlowDatabaseConstructor::class)
 abstract class StudyFlowDatabase : RoomDatabase() {
@@ -26,10 +29,13 @@ abstract class StudyFlowDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun outboxDao(): OutboxDao
     abstract fun settingsDao(): SettingsDao
+    abstract fun syncDao(): SyncDao
 
     companion object {
-        /** Mode lokal memakai database terpisah dari database akun (fase 2). */
+        /** Mode lokal (tanpa akun). Tiap akun memakai file terpisah, lihat [accountDbName]. */
         const val LOCAL_DB_NAME = "studyflow-local.db"
+
+        fun accountDbName(userId: String): String = "studyflow-user-$userId.db"
     }
 }
 

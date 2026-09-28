@@ -1,6 +1,7 @@
 package id.studyflow.data
 
 import androidx.room.Room
+import id.studyflow.data.local.DatabaseManager
 import id.studyflow.data.local.StudyFlowDatabase
 import id.studyflow.data.local.buildDatabase
 import id.studyflow.data.repository.CourseRepository
@@ -12,7 +13,6 @@ import id.studyflow.domain.TaskStatus
 import id.studyflow.domain.ValidationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.TimeZone
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
@@ -21,16 +21,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-
-private class FakeClock(var now: Long = 1_790_000_000_000L) : AppClock {
-    override fun nowMillis(): Long = now
-    override fun currentZone(): TimeZone = TimeZone.of("Asia/Jakarta")
-}
-
-private class SequentialIds : IdGenerator {
-    private var next = 0
-    override fun newId(): String = "id-${next++}"
-}
 
 class RepositoryTest {
     private val clock = FakeClock()
@@ -42,10 +32,11 @@ class RepositoryTest {
         buildDatabase(Room.databaseBuilder<StudyFlowDatabase>(name = file.absolutePath)).also { openDbs += it }
 
     private class Repos(val db: StudyFlowDatabase, clock: AppClock, ids: IdGenerator = UuidGenerator) {
-        val mutations = LocalMutations(db, clock, ids)
-        val courses = CourseRepository(db, mutations)
-        val notes = NoteRepository(db, mutations)
-        val tasks = TaskRepository(db, mutations)
+        val databases = DatabaseManager { db }
+        val mutations = LocalMutations(databases, clock, ids)
+        val courses = CourseRepository(databases, mutations)
+        val notes = NoteRepository(databases, mutations)
+        val tasks = TaskRepository(databases, mutations)
         val outbox = db.outboxDao()
     }
 

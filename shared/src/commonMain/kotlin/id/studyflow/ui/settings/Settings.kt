@@ -29,16 +29,17 @@ import androidx.lifecycle.viewModelScope
 import id.studyflow.data.AppClock
 import id.studyflow.data.repository.SettingsRepository
 import id.studyflow.domain.ThemeMode
+import id.studyflow.domain.formatDateTime
+import id.studyflow.ui.account.AccountSection
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
 data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val pendingChanges: Int = 0,
     val timeZoneId: String = "",
 )
 
@@ -46,12 +47,13 @@ class SettingsViewModel(
     private val settings: SettingsRepository,
     clock: AppClock,
 ) : ViewModel() {
-    val state: StateFlow<SettingsUiState> = combine(
-        settings.observeThemeMode(),
-        settings.observePendingChanges(),
-    ) { theme, pending ->
-        SettingsUiState(theme, pending, clock.currentZone().id)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+    private val zone = clock.currentZone()
+
+    val state: StateFlow<SettingsUiState> = settings.observeThemeMode()
+        .map { theme -> SettingsUiState(theme, zone.id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+
+    fun formatTime(epochMillis: Long): String = formatDateTime(epochMillis, zone)
 
     fun setTheme(mode: ThemeMode) {
         viewModelScope.launch { settings.setThemeMode(mode) }
@@ -62,7 +64,7 @@ private val themeLabels = mapOf(ThemeMode.SYSTEM to "Sistem", ThemeMode.LIGHT to
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onOpenAuth: () -> Unit, onOpenConflicts: () -> Unit) {
     val viewModel = koinViewModel<SettingsViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -83,22 +85,11 @@ fun SettingsScreen() {
                     }
                 }
                 HorizontalDivider()
-                Text("Akun", style = MaterialTheme.typography.titleMedium)
-                SettingRow("Status", "Mode lokal (belum masuk)")
-                SettingRow(
-                    "Perubahan menunggu sinkronisasi",
-                    if (state.pendingChanges == 0) "Tidak ada" else "${state.pendingChanges} perubahan",
-                )
-                Text(
-                    "Masuk akun dan sinkronisasi antar perangkat tersedia di tahap berikutnya. " +
-                        "Perubahan yang kamu buat sekarang tetap tersimpan dan dapat diimpor setelah masuk.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                AccountSection(onOpenAuth, onOpenConflicts, viewModel::formatTime)
                 HorizontalDivider()
                 Text("Tentang", style = MaterialTheme.typography.titleMedium)
                 SettingRow("Zona waktu tampilan", state.timeZoneId)
-                SettingRow("Versi", "0.1.0 (fase 1 — lokal)")
+                SettingRow("Versi", "0.2.0")
             }
         }
     }

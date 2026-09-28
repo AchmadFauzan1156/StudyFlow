@@ -23,7 +23,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import id.studyflow.data.AppClock
+import id.studyflow.data.auth.AuthState
+import id.studyflow.data.auth.SessionManager
+import id.studyflow.data.sync.ConflictRepository
 import id.studyflow.data.repository.CourseRepository
 import id.studyflow.data.repository.TaskRepository
 import id.studyflow.domain.DeadlineStatus
@@ -48,6 +54,8 @@ data class HomeUiState(
     val overdueCount: Int = 0,
     val nowMillis: Long = 0,
     val zone: TimeZone = TimeZone.UTC,
+    val auth: AuthState = AuthState.SignedOut,
+    val conflicts: Int = 0,
 )
 
 /** Jumlah deadline yang ditampilkan di beranda. */
@@ -57,9 +65,16 @@ class HomeViewModel(
     courses: CourseRepository,
     private val tasks: TaskRepository,
     private val clock: AppClock,
+    session: SessionManager,
+    conflicts: ConflictRepository,
 ) : ViewModel() {
     val state: StateFlow<HomeUiState> =
-        combine(courses.observeCount(), tasks.observeAll()) { courseCount, allTasks ->
+        combine(
+            courses.observeCount(),
+            tasks.observeAll(),
+            session.state,
+            conflicts.observeCount(),
+        ) { courseCount, allTasks, auth, conflictCount ->
             val now = clock.nowMillis()
             val zone = clock.currentZone()
             val open = allTasks.filter { it.status != TaskStatus.DONE }
@@ -70,6 +85,8 @@ class HomeViewModel(
                 overdueCount = open.count { deadlineStatus(it.dueAt, it.status, now, zone) == DeadlineStatus.OVERDUE },
                 nowMillis = now,
                 zone = zone,
+                auth = auth,
+                conflicts = conflictCount,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
@@ -82,7 +99,12 @@ class HomeViewModel(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onOpenCourses: () -> Unit, onOpenTask: (StudyTask) -> Unit) {
+fun HomeScreen(
+    onOpenCourses: () -> Unit,
+    onOpenTask: (StudyTask) -> Unit,
+    onOpenConflicts: () -> Unit,
+    onOpenAuth: () -> Unit,
+) {
     val viewModel = koinViewModel<HomeViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -93,12 +115,20 @@ fun HomeScreen(onOpenCourses: () -> Unit, onOpenTask: (StudyTask) -> Unit) {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item {
-                    InfoCard(
-                        title = "Mode lokal",
-                        message = "Data tersimpan di perangkat ini dan tetap bisa dipakai tanpa internet. " +
-                            "Akun, sinkronisasi, dan fitur AI hadir di tahap berikutnya.",
-                    )
+                item { AccountCard(state.auth, onOpenAuth) }
+                if (state.conflicts > 0) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenConflicts),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        ) {
+                            Text(
+                                "${state.conflicts} perubahan bentrok dengan perangkat lain. Ketuk untuk memilih versi.",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                    }
                 }
                 if (!state.loading && state.courseCount == 0) {
                     item {
@@ -138,5 +168,29 @@ fun HomeScreen(onOpenCourses: () -> Unit, onOpenTask: (StudyTask) -> Unit) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AccountCard(auth: AuthState, onOpenAuth: () -> Unit) {
+    when (auth) {
+        is AuthState.SignedIn -> InfoCard(
+            title = if (auth.sessionExpired) "Sesi berakhir" else "Tersinkron dengan akun",
+            message = if (auth.sessionExpired) {
+                "Masuk lagi di Pengaturan untuk melanjutkan sinkronisasi. Perubahan tetap tersimpan di perangkat."
+            } else {
+                "${auth.email ?: "Akun"} · perubahan tersimpan di perangkat dan dikirim otomatis saat online."
+            },
+        )
+        AuthState.SignedOut -> InfoCard(
+            title = "Mode lokal",
+            message = "Data tersimpan di perangkat ini dan tetap bisa dipakai tanpa internet. " +
+                "Ketuk untuk masuk dan menyinkronkan antar perangkat.",
+            modifier = Modifier.clickable(onClick = onOpenAuth),
+        )
+        AuthState.Unconfigured -> InfoCard(
+            title = "Mode lokal",
+            message = "Data tersimpan di perangkat ini dan tetap bisa dipakai tanpa internet.",
+        )
     }
 }

@@ -22,3 +22,23 @@ Format: keputusan — alasan. Keputusan produk utama mengikuti spesifikasi arsit
 16. **Request ID selalu dibuat server** — header `X-Request-ID` dari klien diabaikan agar log tidak bisa disisipi nilai dari luar.
 17. **Belum ada Dockerfile, SQLAlchemy, atau Alembic** — ditambahkan saat ada database/deployment (fase 2 dan 6) supaya tidak ada dependency yang belum dipakai.
 18. **File instruksi/konfigurasi asisten AI (`.claude/`, `CLAUDE.md`, `AGENTS.md`, `.cursor/`, dll.) di-ignore Git** — sesuai permintaan pemilik repo.
+
+## Fase 2
+
+19. **Klien memanggil REST Supabase Auth lewat Ktor, tanpa SDK Supabase** — sesuai spesifikasi, dan cukup untuk `signup`, `token` (password/refresh), dan `logout`. Hanya publishable key yang ada di aplikasi.
+20. **Backend memverifikasi JWT lewat JWKS (ES256/RS256)** — rekomendasi Supabase untuk signing key asimetris. HS256 hanya aktif jika `STUDYFLOW_JWT_HS256_SECRET` diisi (proyek legacy atau tes). `aud` bisa dikonfigurasi dengan default `authenticated`, karena dokumentasi JWT Supabase tidak menyebut nilainya secara eksplisit.
+21. **Database per akun di klien (`studyflow-user-<id>.db`), mode lokal tetap di `studyflow-local.db`** — pergantian akun cukup berpindah file; data akun lain tidak pernah dimuat. Logout menyembunyikan database akun tetapi tidak menghapusnya, supaya perubahan yang belum terkirim tidak hilang. Preferensi tema tetap di database lokal karena berlaku per perangkat.
+22. **Penyimpanan sesi**: Android memakai Keystore AES-GCM (EncryptedSharedPreferences sudah deprecated), Windows memakai DPAPI via JNA, OS desktop lain memory-only. Yang disimpan hanya refresh token dan user id; access token diambil ulang lewat refresh. Refresh token hasil rotasi selalu disimpan.
+23. **Sesi dipulihkan tanpa jaringan** — setelah aplikasi dibuka, data akun langsung bisa dipakai offline. Jika refresh token dicabut, status menjadi "Sesi berakhir" tanpa menghapus data.
+24. **Server menyimpan satu baris `sync_changes` per entity (di-upsert)** — pull mengembalikan state terbaru tiap entity sekali saja, sehingga cursor tidak pernah "kedaluwarsa" karena log dipangkas. Cursor tidak valid tetap memicu full resync di klien.
+25. **Serialisasi per pengguna dengan `SELECT … FOR UPDATE` pada `sync_counters`** — implementasi awal yang disarankan spesifikasi. Nomor `seq` mengikuti urutan commit, sehingga pull tidak melewatkan transaksi yang commit belakangan. Diuji dengan 4 thread paralel.
+26. **Versi dicek sebelum validasi induk** — update catatan berbasis versi lama setelah mata kuliahnya dihapus menghasilkan `conflict` (klien menerima salinan server yang terhapus), bukan `parent_not_found`.
+27. **Klien mengirim satu mutasi per entity per batch, lalu me-rebase mutasi berikutnya ke versi hasil `applied`** — perubahan beruntun offline (create → update) tidak dianggap konflik. Entri yang sudah pernah dikirim tidak diubah, supaya hash payload untuk retry tetap sama.
+28. **Konflik ditahan di tabel lokal `sync_conflicts` sampai pengguna memilih** — "Pakai versi saya" mengirim UPDATE/DELETE baru di atas versi server; "Pakai versi server" menimpa lokal dan membuang mutasi tertahan. Pull tidak pernah menimpa entity yang masih punya outbox atau konflik.
+29. **Pull diterapkan dalam satu transaksi setelah semua halaman diterima, mata kuliah lebih dulu** — mencegah pelanggaran FK lokal saat catatan datang sebelum induknya, dan cursor hanya maju jika semua perubahan tersimpan.
+30. **Mutasi `rejected` dibuang (tidak diulang tanpa akhir)** — penyebabnya permanen (induk dihapus, ID milik akun lain, payload tidak valid).
+31. **Impor data mode lokal memakai UUID v8 turunan SHA-256 dari (user_id, id lokal)** — impor ulang ke akun yang sama tidak menggandakan data, dan akun berbeda mendapat ID berbeda (ID entity unik global di server). Data mode lokal tidak dihapus. Tawaran impor muncul sekali per akun, dan tombol impor tetap tersedia di Pengaturan.
+32. **Pemicu sinkronisasi**: saat masuk, 1,5 detik setelah outbox berubah, setiap 5 menit saat aplikasi terbuka, dan manual. Kegagalan jaringan dicoba ulang dengan backoff 5 detik sampai maksimal 5 menit. Sinkronisasi background saat aplikasi tertutup berada di luar scope.
+33. **Konfigurasi server aplikasi dibuat saat build (`AppConfig`) dari `local.properties`/environment** — nilai publik, bukan rahasia. Nilai kosong berarti mode lokal saja.
+34. **Build debug Android mengizinkan cleartext hanya ke `10.0.2.2`/`localhost`/`127.0.0.1`** — untuk backend lokal; build release tetap HTTPS-only.
+35. **Migrasi Room 1 → 2 memakai AutoMigration** — hanya menambah tabel `sync_conflicts`. Diuji dengan membuka file database skema v1 yang berisi data.

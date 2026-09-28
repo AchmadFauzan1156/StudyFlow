@@ -22,7 +22,8 @@ Diverifikasi 28 September 2026 dari dokumentasi resmi dan metadata Maven Central
 | kotlinx.coroutines | 1.11.0 | Stabil terbaru. |
 | kotlinx.serialization | 1.11.0 | Stabil terbaru. |
 | kotlinx-datetime | 0.8.0 | Memakai `kotlin.time.Instant`. |
-| Ktor Client | 3.6.0 | Dipin di katalog untuk fase 2 (belum dipakai). |
+| Ktor Client (core, content-negotiation, OkHttp engine, mock untuk tes) | 3.6.0 | Klien Supabase Auth dan API sinkronisasi. |
+| JNA Platform | 5.19.1 | DPAPI (`Crypt32Util`) untuk menyimpan sesi terenkripsi di Windows. |
 | activity-compose | 1.13.0 | Entry point Android. |
 
 SDK Android: `compileSdk = 37` (Compose 1.12.1 mensyaratkan compile terhadap API 37; AGP 9.4 mendukung maksimum API 37), `targetSdk = 36`, `minSdk = 26`.
@@ -41,8 +42,12 @@ JDK: Gradle berjalan pada JDK 25 yang terpasang; bytecode ditarget JVM 17.
 | pytest (dev) | 9.1.1 |
 | httpx2 (dev, untuk TestClient) | 2.13.1 |
 | ruff (dev) | 0.16.9 |
+| sqlalchemy | 2.1.1 |
+| psycopg[binary] | 3.3.6 |
+| alembic | 1.20.0 |
+| pyjwt[crypto] | 2.15.0 (cryptography 50.0.1) |
 
-SQLAlchemy, psycopg, dan Alembic ditambahkan di fase 2 bersama migrasi pertama; tidak dipasang sebelum dipakai.
+PostgreSQL lokal: image `pgvector/pgvector:pg17` (docker-compose), dipilih agar fase 4 (RAG) tidak perlu mengganti database.
 
 ## Cara memeriksa pembaruan
 

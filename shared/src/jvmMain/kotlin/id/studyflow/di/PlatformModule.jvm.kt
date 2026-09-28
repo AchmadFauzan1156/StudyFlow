@@ -1,8 +1,16 @@
 package id.studyflow.di
 
 import androidx.room.Room
+import id.studyflow.config.AppConfig
+import id.studyflow.data.auth.SecureSessionStore
+import id.studyflow.data.auth.desktopSessionStore
+import id.studyflow.data.local.DatabaseFactory
 import id.studyflow.data.local.StudyFlowDatabase
 import id.studyflow.data.local.buildDatabase
+import id.studyflow.data.remote.ServerConfig
+import id.studyflow.data.remote.studyFlowDefaults
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import org.koin.dsl.module
 import java.io.File
 
@@ -15,8 +23,18 @@ fun desktopDataDir(): File {
 }
 
 fun desktopPlatformModule(dataDir: File = desktopDataDir()) = module {
-    single<StudyFlowDatabase> {
-        val dbFile = File(dataDir, StudyFlowDatabase.LOCAL_DB_NAME)
-        buildDatabase(Room.databaseBuilder<StudyFlowDatabase>(name = dbFile.absolutePath))
+    single<DatabaseFactory> {
+        DatabaseFactory { name ->
+            buildDatabase(Room.databaseBuilder<StudyFlowDatabase>(name = File(dataDir, name).absolutePath))
+        }
+    }
+    single<SecureSessionStore> { desktopSessionStore(dataDir) }
+    single { HttpClient(OkHttp) { studyFlowDefaults() } }
+    single {
+        ServerConfig(
+            supabaseUrl = AppConfig.supabaseUrl,
+            supabasePublishableKey = AppConfig.supabasePublishableKey,
+            apiBaseUrl = AppConfig.apiBaseUrl,
+        )
     }
 }

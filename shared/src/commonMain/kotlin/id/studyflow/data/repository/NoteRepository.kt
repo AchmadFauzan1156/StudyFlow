@@ -1,25 +1,28 @@
 package id.studyflow.data.repository
 
 import id.studyflow.data.local.NoteEntity
-import id.studyflow.data.local.StudyFlowDatabase
+import id.studyflow.data.local.DatabaseManager
 import id.studyflow.domain.Limits
 import id.studyflow.domain.Note
 import id.studyflow.domain.ValidationException
 import id.studyflow.domain.requireText
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class NoteRepository(
-    private val db: StudyFlowDatabase,
+    private val databases: DatabaseManager,
     private val mutations: LocalMutations,
 ) {
-    private val noteDao = db.noteDao()
+    private val noteDao get() = databases.db.noteDao()
 
     fun observeByCourse(courseId: String): Flow<List<Note>> =
-        noteDao.observeByCourse(courseId).map { list -> list.map { it.toDomain() } }
+        databases.current.flatMapLatest { it.noteDao().observeByCourse(courseId) }.map { list -> list.map { it.toDomain() } }
 
-    fun observeCount(): Flow<Int> = noteDao.observeCount()
+    fun observeCount(): Flow<Int> = databases.current.flatMapLatest { it.noteDao().observeCount() }
 
     suspend fun get(id: String): Note? = noteDao.getById(id)?.takeIf { it.deletedAt == null }?.toDomain()
 
@@ -38,7 +41,7 @@ class NoteRepository(
         mutations.write {
             val course = db.courseDao().getById(courseId)
             if (course == null || course.deletedAt != null) throw ValidationException("Mata kuliah tidak ditemukan")
-            noteDao.upsert(entity)
+            db.noteDao().upsert(entity)
             enqueue(EntityType.NOTE, entity.id, Operation.CREATE, entity.version, entity.payload())
         }
         return entity.id
@@ -48,7 +51,7 @@ class NoteRepository(
         val cleanTitle = requireText(title, "Judul catatan", Limits.NOTE_TITLE_MAX)
         val cleanContent = checkContent(content)
         mutations.write {
-            val current = noteDao.getById(id)?.takeIf { it.deletedAt == null }
+            val current = db.noteDao().getById(id)?.takeIf { it.deletedAt == null }
                 ?: throw ValidationException("Catatan tidak ditemukan")
             if (current.title == cleanTitle && current.content == cleanContent) return@write
             val updated = current.copy(
@@ -57,16 +60,16 @@ class NoteRepository(
                 updatedAt = mutations.now(),
                 pendingSync = true,
             )
-            noteDao.upsert(updated)
+            db.noteDao().upsert(updated)
             enqueue(EntityType.NOTE, id, Operation.UPDATE, current.version, updated.payload())
         }
     }
 
     suspend fun delete(id: String) {
         mutations.write {
-            val current = noteDao.getById(id)?.takeIf { it.deletedAt == null } ?: return@write
+            val current = db.noteDao().getById(id)?.takeIf { it.deletedAt == null } ?: return@write
             val now = mutations.now()
-            noteDao.upsert(current.copy(deletedAt = now, updatedAt = now, pendingSync = true))
+            db.noteDao().upsert(current.copy(deletedAt = now, updatedAt = now, pendingSync = true))
             enqueue(
                 EntityType.NOTE, id, Operation.DELETE, current.version,
                 mutations.json.encodeToString(DeletePayload(now)),

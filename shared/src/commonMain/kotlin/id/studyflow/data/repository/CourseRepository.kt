@@ -1,31 +1,34 @@
 package id.studyflow.data.repository
 
 import id.studyflow.data.local.CourseEntity
-import id.studyflow.data.local.StudyFlowDatabase
+import id.studyflow.data.local.DatabaseManager
 import id.studyflow.domain.Course
 import id.studyflow.domain.Limits
 import id.studyflow.domain.ValidationException
 import id.studyflow.domain.optionalText
 import id.studyflow.domain.requireText
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CourseRepository(
-    private val db: StudyFlowDatabase,
+    private val databases: DatabaseManager,
     private val mutations: LocalMutations,
 ) {
-    private val courseDao = db.courseDao()
+    private val courseDao get() = databases.db.courseDao()
 
     fun observeCourses(): Flow<List<Course>> =
-        courseDao.observeAllWithCounts().map { rows ->
+        databases.current.flatMapLatest { it.courseDao().observeAllWithCounts() }.map { rows ->
             rows.map { it.course.toDomain(it.noteCount, it.openTaskCount) }
         }
 
     fun observeCourse(id: String): Flow<Course?> =
-        courseDao.observeById(id).map { it?.toDomain() }
+        databases.current.flatMapLatest { it.courseDao().observeById(id) }.map { it?.toDomain() }
 
-    fun observeCount(): Flow<Int> = courseDao.observeCount()
+    fun observeCount(): Flow<Int> = databases.current.flatMapLatest { it.courseDao().observeCount() }
 
     suspend fun create(name: String, semester: String?): String {
         val cleanName = requireText(name, "Nama mata kuliah", Limits.COURSE_NAME_MAX)
@@ -39,7 +42,7 @@ class CourseRepository(
             updatedAt = now,
         )
         mutations.write {
-            courseDao.upsert(entity)
+            db.courseDao().upsert(entity)
             enqueue(EntityType.COURSE, entity.id, Operation.CREATE, entity.version, entity.payload())
         }
         return entity.id
@@ -49,7 +52,7 @@ class CourseRepository(
         val cleanName = requireText(name, "Nama mata kuliah", Limits.COURSE_NAME_MAX)
         val cleanSemester = optionalText(semester, "Semester", Limits.SEMESTER_MAX)
         mutations.write {
-            val current = courseDao.getById(id)?.takeIf { it.deletedAt == null }
+            val current = db.courseDao().getById(id)?.takeIf { it.deletedAt == null }
                 ?: throw ValidationException("Mata kuliah tidak ditemukan")
             val updated = current.copy(
                 name = cleanName,
@@ -57,7 +60,7 @@ class CourseRepository(
                 updatedAt = mutations.now(),
                 pendingSync = true,
             )
-            courseDao.upsert(updated)
+            db.courseDao().upsert(updated)
             enqueue(EntityType.COURSE, id, Operation.UPDATE, current.version, updated.payload())
         }
     }
@@ -68,9 +71,9 @@ class CourseRepository(
      */
     suspend fun delete(id: String) {
         mutations.write {
-            val current = courseDao.getById(id)?.takeIf { it.deletedAt == null } ?: return@write
+            val current = db.courseDao().getById(id)?.takeIf { it.deletedAt == null } ?: return@write
             val now = mutations.now()
-            courseDao.upsert(current.copy(deletedAt = now, updatedAt = now, pendingSync = true))
+            db.courseDao().upsert(current.copy(deletedAt = now, updatedAt = now, pendingSync = true))
             db.noteDao().getActiveByCourse(id).forEach {
                 db.noteDao().upsert(it.copy(deletedAt = now, updatedAt = now))
             }

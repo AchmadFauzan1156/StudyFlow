@@ -1,5 +1,71 @@
 # Progres
 
+## Checkpoint 2 — Fase 2: akun dan sinkronisasi (28 September 2026)
+
+### Selesai
+
+**Backend**
+- Validasi access token Supabase: JWKS (ES256/RS256) dengan cache 10 menit, HS256 opsional untuk legacy/tes; `iss`, `aud`, `exp`, dan `sub` wajib; `user_id` hanya dari `sub`.
+- `GET /v1/me`, `POST /v1/sync/push`, `GET /v1/sync/pull`. Kontrak lengkap di [API.md](API.md).
+- Migrasi Alembic `0001`:
+  - Tabel `profiles`, `courses`, `notes`, `tasks`, `sync_counters`, `sync_changes`, `sync_mutations`.
+  - FK kepemilikan komposit `(course_id, user_id)`.
+  - RLS aktif di semua tabel tanpa policy, dan hak `anon`/`authenticated` dicabut.
+- `docker-compose.yml` untuk PostgreSQL lokal (pgvector) beserta role tiruan Supabase.
+
+**Aplikasi**
+- Masuk/daftar lewat REST Supabase Auth (Ktor), dengan pesan error berbahasa Indonesia.
+- Konfirmasi email didukung.
+- Refresh token dengan rotasi; 401 memicu satu kali refresh lalu request diulang.
+- Sesi terenkripsi: Android Keystore (AES-GCM), Windows DPAPI. OS lain memory-only.
+- Sesi dipulihkan tanpa jaringan; bila refresh token dicabut, status menjadi "Sesi berakhir".
+- Database per akun (`studyflow-user-<id>.db`). Logout kembali ke mode lokal tanpa menghapus perubahan yang belum terkirim.
+- Mesin sinkronisasi:
+  - Outbox dikirim dengan retry idempotent, dan mutasi berikutnya di-rebase setelah `applied`.
+  - Konflik ditahan sampai pengguna memilih.
+  - Pull atomik dengan urutan induk lebih dulu, tidak menimpa edit tertunda, dan full resync bila cursor tidak valid.
+- Pemicu sinkronisasi: saat masuk, setelah edit (debounce 1,5 detik), berkala 5 menit, manual, dan backoff eksponensial saat gagal.
+- UI:
+  - Layar Masuk/Daftar.
+  - Bagian Akun di Pengaturan: status sinkronisasi, perubahan tertunda, Sinkronkan sekarang, Keluar dengan peringatan, impor data lokal.
+  - Kartu status akun dan banner konflik di Beranda.
+  - Layar konflik ("Pakai versi saya" / "Pakai versi server").
+- Impor data mode lokal ke akun (ID stabil per akun, impor ulang tidak menggandakan), ditawarkan sekali setelah masuk.
+- Room skema v2 (tabel `sync_conflicts`) dengan AutoMigration dari v1.
+- `AppConfig` dibuat saat build dari `local.properties`/environment. Tanpa konfigurasi, aplikasi berjalan di mode lokal.
+- Build debug Android mengizinkan HTTP hanya ke host lokal.
+
+### Perintah yang dijalankan dan hasilnya
+
+| Perintah | Hasil |
+|---|---|
+| `docker compose up -d` + `uv run alembic upgrade head` | Migrasi berhasil; RLS aktif (`relrowsecurity = t`) |
+| `uv run pytest` dengan `STUDYFLOW_TEST_DATABASE_URL` | 33 lulus: 14 unit + 19 integrasi PostgreSQL (auth: token salah secret/aud/iss/kedaluwarsa; idempotensi; `mutation_id` dipakai ulang; konflik; payload invalid; cascade; induk wajib; batas batch; isolasi dua akun; role `anon`/`authenticated` ditolak; paging/cursor; cursor invalid; 4 push paralel dengan `seq` unik berurutan) |
+| `uv run ruff check .` | Bersih |
+| `gradlew clean :shared:jvmTest --rerun-tasks` (dengan `STUDYFLOW_E2E_*`) | 46 lulus: 11 mesin sinkronisasi (MockEngine), 11 sesi/isolasi/impor/DPAPI, 1 migrasi v1→v2, 3 E2E dua perangkat melawan backend + PostgreSQL asli, 20 tes lama |
+| `gradlew :androidApp:assembleDebug :desktopApp:jar` | Berhasil, tanpa peringatan compiler di kode proyek |
+| Uji manual desktop: dua instance (folder data berbeda) + auth tiruan lokal + backend | Login gagal lalu berhasil; tawaran impor → data lokal tersinkron; perangkat B melihat data A; edit bersamaan → banner konflik → "Pakai versi saya" → B menerima versi A; tutup/buka ulang → sesi pulih (DPAPI + refresh); Keluar → server `/logout`, `session.bin` terhapus, kembali ke data mode lokal |
+| Uji manual emulator API 36 | Login via `10.0.2.2`; `force-stop` → sesi pulih (Keystore); mata kuliah baru sampai di server |
+
+Auth tiruan dan data uji hanya dipakai sementara di scratchpad; tidak masuk repo, dan data uji sudah dihapus dari `%APPDATA%` serta database dev.
+
+### Keterbatasan dan hambatan
+
+- **Belum diuji dengan proyek Supabase sungguhan.** Tidak ada kredensial proyek di sesi ini (dan tidak boleh diminta lewat chat). Endpoint dan format token mengikuti dokumentasi resmi Supabase/GoTrue, dan diuji dengan tiruan yang meniru formatnya. Langkah verifikasi saat proyek tersedia:
+  1. Isi `local.properties` dan `backend/.env`.
+  2. Jalankan `alembic upgrade head`.
+  3. Daftar, lalu masuk dari dua perangkat.
+- Verifikasi JWKS (ES256/RS256) hanya diuji lewat jalur kode yang sama dengan HS256; belum ada tes dengan kunci asimetris sungguhan.
+- Tidak ada sinkronisasi background saat aplikasi tertutup (di luar scope spesifikasi).
+- Logout tidak menghapus file database akun (disengaja; lihat DECISIONS #21). Menghapus akun beserta datanya masuk fase berikutnya.
+- Masalah watcher folder sesi pada build Gradle (lihat checkpoint 1) masih berlaku; build diverifikasi dari salinan di luar folder kerja.
+
+### Langkah berikutnya (fase 3)
+
+Lihat [PLAN.md](PLAN.md#langkah-fase-3-rinci). **Keputusan yang dibutuhkan darimu sebelum mulai:** provider AI mana yang dipakai (mis. Anthropic, OpenAI, atau Google). Pilihan ini menentukan adapter, model, dan kebijakan retensi data yang ditampilkan ke pengguna. Tanpa keputusan itu, fase 3 tetap bisa dikerjakan dengan fake provider berlabel demo sampai provider dipilih.
+
+---
+
 ## Checkpoint 1 — Fase 0 dan 1 (28 September 2026)
 
 ### Environment yang diaudit

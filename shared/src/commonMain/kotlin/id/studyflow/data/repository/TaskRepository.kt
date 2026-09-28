@@ -1,6 +1,6 @@
 package id.studyflow.data.repository
 
-import id.studyflow.data.local.StudyFlowDatabase
+import id.studyflow.data.local.DatabaseManager
 import id.studyflow.data.local.TaskEntity
 import id.studyflow.domain.Limits
 import id.studyflow.domain.StudyTask
@@ -8,7 +8,9 @@ import id.studyflow.domain.TaskStatus
 import id.studyflow.domain.ValidationException
 import id.studyflow.domain.optionalText
 import id.studyflow.domain.requireText
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.encodeToString
@@ -21,17 +23,18 @@ data class TaskInput(
     val status: TaskStatus = TaskStatus.TODO,
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TaskRepository(
-    private val db: StudyFlowDatabase,
+    private val databases: DatabaseManager,
     private val mutations: LocalMutations,
 ) {
-    private val taskDao = db.taskDao()
+    private val taskDao get() = databases.db.taskDao()
 
     fun observeByCourse(courseId: String): Flow<List<StudyTask>> =
-        taskDao.observeByCourse(courseId).map { list -> list.map { it.toDomain(null) } }
+        databases.current.flatMapLatest { it.taskDao().observeByCourse(courseId) }.map { list -> list.map { it.toDomain(null) } }
 
     fun observeAll(): Flow<List<StudyTask>> =
-        taskDao.observeAllWithCourse().map { list -> list.map { it.task.toDomain(it.courseName) } }
+        databases.current.flatMapLatest { it.taskDao().observeAllWithCourse() }.map { list -> list.map { it.task.toDomain(it.courseName) } }
 
     suspend fun get(id: String): StudyTask? = taskDao.getById(id)?.takeIf { it.deletedAt == null }?.toDomain(null)
 
@@ -52,7 +55,7 @@ class TaskRepository(
         mutations.write {
             val course = db.courseDao().getById(courseId)
             if (course == null || course.deletedAt != null) throw ValidationException("Mata kuliah tidak ditemukan")
-            taskDao.upsert(entity)
+            db.taskDao().upsert(entity)
             enqueue(EntityType.TASK, entity.id, Operation.CREATE, entity.version, entity.payload())
         }
         return entity.id
@@ -61,7 +64,7 @@ class TaskRepository(
     suspend fun update(id: String, input: TaskInput) {
         val clean = input.validated()
         mutations.write {
-            val current = taskDao.getById(id)?.takeIf { it.deletedAt == null }
+            val current = db.taskDao().getById(id)?.takeIf { it.deletedAt == null }
                 ?: throw ValidationException("Tugas tidak ditemukan")
             val updated = current.copy(
                 title = clean.title,
@@ -73,7 +76,7 @@ class TaskRepository(
                 pendingSync = true,
             )
             if (updated.copy(updatedAt = current.updatedAt, pendingSync = current.pendingSync) == current) return@write
-            taskDao.upsert(updated)
+            db.taskDao().upsert(updated)
             enqueue(EntityType.TASK, id, Operation.UPDATE, current.version, updated.payload())
         }
     }
@@ -85,9 +88,9 @@ class TaskRepository(
 
     suspend fun delete(id: String) {
         mutations.write {
-            val current = taskDao.getById(id)?.takeIf { it.deletedAt == null } ?: return@write
+            val current = db.taskDao().getById(id)?.takeIf { it.deletedAt == null } ?: return@write
             val now = mutations.now()
-            taskDao.upsert(current.copy(deletedAt = now, updatedAt = now, pendingSync = true))
+            db.taskDao().upsert(current.copy(deletedAt = now, updatedAt = now, pendingSync = true))
             enqueue(
                 EntityType.TASK, id, Operation.DELETE, current.version,
                 mutations.json.encodeToString(DeletePayload(now)),

@@ -97,6 +97,19 @@ data class OutboxEntity(
     @ColumnInfo(name = "retry_count") val retryCount: Int = 0,
 )
 
+/**
+ * Konflik sinkronisasi yang menunggu keputusan pengguna. Isi lokal tetap di tabel entity;
+ * [serverEntity] menyimpan salinan server (JSON) pada [serverVersion].
+ */
+@Entity(tableName = "sync_conflicts", primaryKeys = ["entity_type", "entity_id"])
+data class ConflictEntity(
+    @ColumnInfo(name = "entity_type") val entityType: String,
+    @ColumnInfo(name = "entity_id") val entityId: String,
+    @ColumnInfo(name = "server_version") val serverVersion: Int,
+    @ColumnInfo(name = "server_entity") val serverEntity: String,
+    @ColumnInfo(name = "detected_at") val detectedAt: Long,
+)
+
 @Entity(tableName = "app_settings")
 data class SettingEntity(
     @PrimaryKey val key: String,

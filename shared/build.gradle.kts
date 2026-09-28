@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -8,6 +9,44 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
+}
+
+// ---------- Konfigurasi publik aplikasi (bukan rahasia) ----------
+// Dibaca dari environment variable atau local.properties (tidak di-commit). Nilai kosong = fitur akun nonaktif.
+val localProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+
+fun configValue(propertyKey: String, envKey: String): String =
+    providers.environmentVariable(envKey).orNull ?: localProperties.getProperty(propertyKey) ?: ""
+
+val appConfigValues = mapOf(
+    "supabaseUrl" to configValue("studyflow.supabase.url", "STUDYFLOW_SUPABASE_URL"),
+    "supabasePublishableKey" to configValue("studyflow.supabase.publishableKey", "STUDYFLOW_SUPABASE_PUBLISHABLE_KEY"),
+    "apiBaseUrl" to configValue("studyflow.api.baseUrl", "STUDYFLOW_API_BASE_URL"),
+    "androidApiBaseUrl" to configValue("studyflow.api.baseUrl.android", "STUDYFLOW_API_BASE_URL_ANDROID"),
+)
+
+val generateAppConfig by tasks.registering {
+    val values = appConfigValues
+    val outputDir = layout.buildDirectory.dir("generated/appconfig/kotlin")
+    inputs.properties(values)
+    outputs.dir(outputDir)
+    doLast {
+        fun literal(v: String) = "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$") + "\""
+        val file = outputDir.get().file("id/studyflow/config/AppConfig.kt").asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            buildString {
+                appendLine("// Dibuat otomatis oleh :shared:generateAppConfig. Jangan diedit.")
+                appendLine("package id.studyflow.config")
+                appendLine()
+                appendLine("object AppConfig {")
+                values.forEach { (key, value) -> appendLine("    const val $key: String = ${literal(value)}") }
+                appendLine("}")
+            },
+        )
+    }
 }
 
 kotlin {
@@ -58,13 +97,26 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
+
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+        }
+        commonMain {
+            kotlin.srcDir(generateAppConfig)
         }
         androidMain.dependencies {
             implementation(libs.koin.android)
+            implementation(libs.ktor.client.okhttp)
+        }
+        jvmMain.dependencies {
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.jna.platform)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
         }
     }
 }

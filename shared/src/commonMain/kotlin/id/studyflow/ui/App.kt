@@ -42,6 +42,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import id.studyflow.data.AppClock
+import id.studyflow.ui.account.AuthScreen
+import id.studyflow.ui.account.ConflictsScreen
+import id.studyflow.ui.account.ImportLocalDialog
 import id.studyflow.ui.courses.CourseDetailScreen
 import id.studyflow.ui.courses.CoursesScreen
 import id.studyflow.ui.dashboard.HomeScreen
@@ -50,6 +54,7 @@ import id.studyflow.ui.progress.ProgressScreen
 import id.studyflow.ui.settings.SettingsScreen
 import id.studyflow.ui.tasks.TaskEditorScreen
 import id.studyflow.ui.theme.StudyFlowTheme
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.reflect.KClass
 
@@ -69,6 +74,7 @@ private const val WIDE_LAYOUT_MIN_DP = 600
 fun App() {
     val appViewModel = koinViewModel<AppViewModel>()
     val themeMode by appViewModel.themeMode.collectAsStateWithLifecycle()
+    val importOffer by appViewModel.importOffer.collectAsStateWithLifecycle()
     StudyFlowTheme(themeMode) {
         val navController = rememberNavController()
         val backStackEntry by navController.currentBackStackEntryAsState()
@@ -78,6 +84,10 @@ fun App() {
         var lastTopLevel by rememberSaveable { mutableIntStateOf(0) }
         LaunchedEffect(currentIndex) { if (currentIndex >= 0) lastTopLevel = currentIndex }
         val selectedIndex = if (currentIndex >= 0) currentIndex else lastTopLevel
+
+        importOffer?.let { count ->
+            ImportLocalDialog(count, onImport = appViewModel::acceptImport, onLater = appViewModel::declineImport)
+        }
 
         BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             if (maxWidth >= WIDE_LAYOUT_MIN_DP.dp) {
@@ -134,13 +144,24 @@ private fun StudyFlowNavHost(navController: NavHostController, modifier: Modifie
             HomeScreen(
                 onOpenCourses = { navController.navigateTopLevel(CoursesRoute) },
                 onOpenTask = { task -> navController.navigate(TaskEditorRoute(task.courseId, task.id)) },
+                onOpenConflicts = { navController.navigate(ConflictsRoute) },
+                onOpenAuth = { navController.navigate(AuthRoute) },
             )
         }
         composable<CoursesRoute> {
             CoursesScreen(onOpenCourse = { navController.navigate(CourseDetailRoute(it)) })
         }
         composable<ProgressRoute> { ProgressScreen() }
-        composable<SettingsRoute> { SettingsScreen() }
+        composable<SettingsRoute> {
+            SettingsScreen(
+                onOpenAuth = { navController.navigate(AuthRoute) },
+                onOpenConflicts = { navController.navigate(ConflictsRoute) },
+            )
+        }
+        composable<AuthRoute> { AuthScreen(onDone = { navController.popBackStack() }) }
+        composable<ConflictsRoute> {
+            ConflictsScreen(zone = koinInject<AppClock>().currentZone(), onBack = { navController.popBackStack() })
+        }
         composable<CourseDetailRoute> { entry ->
             val route = entry.toRoute<CourseDetailRoute>()
             CourseDetailScreen(
