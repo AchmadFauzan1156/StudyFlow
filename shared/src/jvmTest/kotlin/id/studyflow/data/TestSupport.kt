@@ -9,6 +9,9 @@ import id.studyflow.data.local.DatabaseManager
 import id.studyflow.data.local.StudyFlowDatabase
 import id.studyflow.data.local.buildDatabase
 import id.studyflow.data.remote.AccessTokenProvider
+import id.studyflow.data.ai.AiRepository
+import id.studyflow.data.remote.AiApi
+import id.studyflow.data.remote.ApiCaller
 import id.studyflow.data.remote.AuthApi
 import id.studyflow.data.remote.ServerConfig
 import id.studyflow.data.remote.SyncApi
@@ -66,7 +69,9 @@ class Device(
     val conflicts = ConflictRepository(databases, mutations)
     val import = LocalImport(databases, mutations)
     val http = HttpClient(engine) { studyFlowDefaults() }
-    val sync = SyncEngine(databases, SyncApi(http, { apiBaseUrl }, tokens), clock)
+    val apiCaller = ApiCaller(http, { apiBaseUrl }, tokens)
+    val sync = SyncEngine(databases, SyncApi(apiCaller), clock)
+    val ai = AiRepository(databases, AiApi(apiCaller), clock)
 
     fun session(store: SecureSessionStore = MemorySessionStore(), config: ServerConfig = testServerConfig) =
         SessionManager(config, AuthApi(http, config), store, databases, clock)

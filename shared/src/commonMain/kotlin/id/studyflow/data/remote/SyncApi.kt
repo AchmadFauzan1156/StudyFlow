@@ -13,6 +13,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.serialization.KSerializer
 
 /** Error dari API StudyFlow dengan format {code, message, request_id}. */
 class ApiException(val status: Int, val code: String, message: String) : Exception(message)
@@ -28,14 +29,42 @@ fun interface AccessTokenProvider {
     suspend fun accessToken(forceRefresh: Boolean): String?
 }
 
-class SyncApi(
-    private val client: HttpClient,
+/** Pemanggil API StudyFlow: menyisipkan token, refresh sekali saat 401, dan memetakan format error. */
+class ApiCaller(
+    val client: HttpClient,
     private val baseUrl: () -> String,
     private val tokens: AccessTokenProvider,
 ) {
+    fun url(path: String): String = "${baseUrl().trimEnd('/')}$path"
+
+    suspend fun <T> call(serializer: KSerializer<T>, request: suspend HttpClient.(token: String) -> HttpResponse): T {
+        val text = send(request).bodyAsText()
+        return ApiJson.decodeFromString(serializer, text)
+    }
+
+    suspend fun send(request: suspend HttpClient.(token: String) -> HttpResponse): HttpResponse {
+        var response = client.request(tokens.accessToken(false) ?: throw NotAuthenticatedException())
+        if (response.status == HttpStatusCode.Unauthorized) {
+            // Token bisa saja dicabut atau kedaluwarsa lebih cepat dari perkiraan: refresh sekali.
+            response = client.request(tokens.accessToken(true) ?: throw NotAuthenticatedException())
+            if (response.status == HttpStatusCode.Unauthorized) throw NotAuthenticatedException()
+        }
+        if (!response.status.isSuccess()) {
+            val text = response.bodyAsText()
+            val body = runCatching { ApiJson.decodeFromString(ApiErrorBody.serializer(), text) }.getOrNull()
+            throw ApiException(response.status.value, body?.code ?: "http_${response.status.value}",
+                body?.message ?: "Server membalas ${response.status.value}")
+        }
+        return response
+    }
+}
+
+fun HttpRequestBuilder.authorize(token: String) = bearerAuth(token)
+
+class SyncApi(private val api: ApiCaller) {
     suspend fun push(mutations: List<MutationDto>): PushResponseDto =
-        decode(PushResponseDto.serializer()) { token ->
-            client.post("${baseUrl().trimEnd('/')}/v1/sync/push") {
+        api.call(PushResponseDto.serializer()) { token ->
+            post(api.url("/v1/sync/push")) {
                 authorize(token)
                 contentType(ContentType.Application.Json)
                 setBody(PushRequestDto(mutations))
@@ -43,32 +72,11 @@ class SyncApi(
         }
 
     suspend fun pull(cursor: String?, limit: Int): PullResponseDto =
-        decode(PullResponseDto.serializer()) { token ->
-            client.get("${baseUrl().trimEnd('/')}/v1/sync/pull") {
+        api.call(PullResponseDto.serializer()) { token ->
+            get(api.url("/v1/sync/pull")) {
                 authorize(token)
                 if (cursor != null) parameter("cursor", cursor)
                 parameter("limit", limit)
             }
         }
-
-    private fun HttpRequestBuilder.authorize(token: String) = bearerAuth(token)
-
-    private suspend fun <T> decode(
-        serializer: kotlinx.serialization.KSerializer<T>,
-        request: suspend (String) -> HttpResponse,
-    ): T {
-        var response = request(tokens.accessToken(false) ?: throw NotAuthenticatedException())
-        if (response.status == HttpStatusCode.Unauthorized) {
-            // Token bisa saja dicabut atau kedaluwarsa lebih cepat dari perkiraan: refresh sekali.
-            response = request(tokens.accessToken(true) ?: throw NotAuthenticatedException())
-            if (response.status == HttpStatusCode.Unauthorized) throw NotAuthenticatedException()
-        }
-        val text = response.bodyAsText()
-        if (!response.status.isSuccess()) {
-            val body = runCatching { ApiJson.decodeFromString(ApiErrorBody.serializer(), text) }.getOrNull()
-            throw ApiException(response.status.value, body?.code ?: "http_${response.status.value}",
-                body?.message ?: "Server membalas ${response.status.value}")
-        }
-        return ApiJson.decodeFromString(serializer, text)
-    }
 }

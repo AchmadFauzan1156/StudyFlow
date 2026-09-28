@@ -40,12 +40,14 @@ JDK: Gradle berjalan pada JDK 25 yang terpasang; bytecode ditarget JVM 17.
 | pydantic-settings | 2.15.0 |
 | uvicorn[standard] | 0.54.0 |
 | pytest (dev) | 9.1.1 |
-| httpx2 (dev, untuk TestClient) | 2.13.1 |
+| httpx2 (klien provider AI dan TestClient) | 2.13.1 |
 | ruff (dev) | 0.16.9 |
 | sqlalchemy | 2.1.1 |
 | psycopg[binary] | 3.3.6 |
 | alembic | 1.20.0 |
 | pyjwt[crypto] | 2.15.0 (cryptography 50.0.1) |
+
+Provider AI: tidak ada SDK; Chat Completions kompatibel OpenAI dipanggil langsung lewat httpx2 (default Groq `https://api.groq.com/openai/v1`, model `openai/gpt-oss-120b`).
 
 PostgreSQL lokal: image `pgvector/pgvector:pg17` (docker-compose), dipilih agar fase 4 (RAG) tidak perlu mengganti database.
 

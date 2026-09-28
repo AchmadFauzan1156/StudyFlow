@@ -1,5 +1,69 @@
 # Progres
 
+## Checkpoint 3 — Fase 3: rangkuman dan kuis AI gratis (28 September 2026)
+
+Keputusan pemilik proyek: memakai **model AI gratis** dengan pembatasan. Dipilih Groq free plan (`openai/gpt-oss-120b`); perbandingan dan alasannya di [DECISIONS.md](DECISIONS.md) #36–#48.
+
+### Selesai
+
+**Backend**
+- Adapter provider OpenAI-compatible (default Groq) dengan structured output `json_schema` strict.
+  - Error provider dikelompokkan menjadi sementara (429/5xx/timeout, dengan `Retry-After`), ditolak (4xx), dan output tidak valid.
+  - Isi error provider tidak diteruskan ke pengguna.
+- Prompt memperlakukan materi sebagai data (perlindungan prompt injection), dengan `PROMPT_VERSION` tercatat di setiap hasil.
+- Migrasi `0002`: `ai_jobs`, `summaries`, `quizzes`, `questions`, `question_keys` (khusus server), `attempts`, `answers`, `question_reports`, `ai_usage_daily`, `usage_records`. Semua tabel memakai RLS default-deny.
+- Kuota direservasi atomik (per pengguna dan global) dan dikembalikan untuk kegagalan non-pengguna. Batas panjang materi dan jumlah soal.
+- Worker `python -m app.worker`:
+  - Klaim job dengan `SKIP LOCKED` dan lease; pemulihan lease yang habis.
+  - Output tidak valid dicoba ulang satu kali.
+  - Jadwal ulang saat 429/timeout, dan jeda antar panggilan.
+  - Hasil hanya ditulis oleh pemegang lease; job gagal jika catatan berubah.
+- Endpoint: `/v1/ai/info`, `/v1/summaries`, `/v1/quizzes`, `/v1/jobs/{id}`, attempt dengan penilaian deterministik dan idempotent, riwayat, hasil per catatan, dan laporan soal. Detail di [API.md](API.md).
+
+**Aplikasi**
+- Tab **Belajar** di detail mata kuliah: daftar catatan dengan penanda "Belum tersinkron".
+- Layar belajar catatan:
+  - Kuota harian dan batas karakter, serta tombol rangkuman dan kuis (3/5/10 soal).
+  - Persetujuan pengiriman data (teks dari server, sekali per akun per provider).
+  - Status job dengan polling berjeda (2–10 detik, berhenti saat layar ditutup).
+  - Pesan jelas untuk setiap kode kegagalan, dan daftar hasil dengan skor terbaik serta label versi lama.
+- Layar **Rangkuman**: sumber, versi, model, label demo/versi lama.
+- Layar **Kuis** (online):
+  - Pilih jawaban lalu kirim; retry memakai Idempotency-Key yang sama.
+  - Skor, tanda benar/salah, pembahasan, judul sumber, "Tandai soal bermasalah", dan "Kerjakan ulang".
+- **Progres**: riwayat kuis dan rata-rata benar. Hasil lama bisa dibuka offline.
+- Cache Room `remote_cache` (skema v3, AutoMigration) per akun untuk membaca hasil offline.
+
+### Perintah yang dijalankan dan hasilnya
+
+| Perintah | Hasil |
+|---|---|
+| `uv run pytest` dengan `STUDYFLOW_TEST_DATABASE_URL` | 68 lulus. Termasuk 14 unit adapter provider (MockTransport: schema strict, material dibungkus, 429 + Retry-After, 5xx, timeout, key salah tanpa bocor, output rusak/terpotong) dan 16 integrasi AI (503 tanpa provider, idempotensi, 404 lintas akun, 409 versi, 413 terlalu panjang, kuota pengguna/global, 8 permintaan paralel tidak melewati kuota, worker menghasilkan rangkuman/kuis tanpa membocorkan kunci, penilaian + attempt ganda, laporan soal, materi berubah → gagal + kuota kembali, label versi lama, retry output tidak valid tepat sekali, 429 → jadwal ulang lalu menyerah, pemulihan lease + worker basi tidak bisa menulis, klaim paralel tidak bentrok, jeda antar panggilan). Tes RLS kini mencakup `ai_jobs`, `question_keys`, `attempts`. |
+| `uv run ruff check .` | Bersih |
+| `gradlew clean :shared:jvmTest --rerun-tasks` (dengan `STUDYFLOW_E2E_*` dan `STUDYFLOW_E2E_AI=1`) | 53 lulus. 6 `AiRepositoryTest` (kesiapan catatan, cache offline, cache tidak dipakai saat `not_found`, cache dan persetujuan per akun, pesan kuota, Idempotency-Key sama setelah gagal jaringan) dan E2E alur AI melalui API + worker sungguhan (job → kuis → attempt idempotent → riwayat). |
+| `gradlew :androidApp:assembleDebug :desktopApp:jar` | Berhasil tanpa peringatan di kode proyek |
+| Uji manual desktop (auth tiruan + API + worker, provider demo) | Tab Belajar → layar belajar (kuota 0/10) → kuis 3 soal → dialog persetujuan → "menunggu antrean" → hasil muncul (kuota 1/10) → jawab 1 benar, 1 salah, 1 kosong → skor 1/3 dengan warna dan pembahasan → laporkan soal → riwayat di Progres → API dimatikan → hasil kuis tetap terbuka dengan label "Offline" → rangkuman dibuat dan ditampilkan |
+
+### Keterbatasan dan hambatan
+
+- **Belum diuji dengan Groq sungguhan.** API key harus dibuat sendiri oleh pemilik proyek (tidak boleh dibuat atau diminta lewat chat). Adapter mengikuti dokumentasi resmi Groq (endpoint kompatibel OpenAI, `json_schema` strict untuk `openai/gpt-oss-120b`) dan diuji dengan transport tiruan. Kualitas soal model gratis dalam bahasa Indonesia belum dievaluasi. Langkah verifikasi:
+  1. Isi `STUDYFLOW_AI_PROVIDER=openai_compatible` dan `STUDYFLOW_AI_API_KEY`.
+  2. Jalankan API dan worker.
+  3. Buat kuis dari 2–3 catatan contoh, lalu periksa manual kebenaran soal dan pembahasan.
+- Batas token per menit Groq (8K) tidak dihitung per token. Worker memakai jeda 8 detik dan jadwal ulang saat 429; di beban tinggi job bisa tertunda, tetapi tidak hilang.
+- Evaluasi semantik (apakah soal benar menurut materi) belum ada; yang tersedia validasi struktur dan tombol "Tandai soal bermasalah". Soal yang dilaporkan belum dikeluarkan dari perhitungan progres (fase 5).
+- Status "soal sudah dilaporkan" tidak disimpan di klien setelah layar ditutup; server mengabaikan laporan ganda.
+- Rangkuman dokumen panjang (per bagian) dan PDF menunggu fase 4.
+
+### Langkah berikutnya (fase 4)
+
+Lihat [PLAN.md](PLAN.md#langkah-fase-4-rinci). **Keputusan yang dibutuhkan:** Groq tidak menyediakan embedding, jadi untuk RAG gratis perlu dipilih:
+- Embedding Gemini (gratis, tetapi datanya dipakai Google).
+- Model embedding lokal ringan di worker.
+- Mulai dari pencarian full-text PostgreSQL tanpa embedding.
+
+---
+
 ## Checkpoint 2 — Fase 2: akun dan sinkronisasi (28 September 2026)
 
 ### Selesai

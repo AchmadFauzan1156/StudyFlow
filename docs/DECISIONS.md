@@ -42,3 +42,31 @@ Format: keputusan — alasan. Keputusan produk utama mengikuti spesifikasi arsit
 33. **Konfigurasi server aplikasi dibuat saat build (`AppConfig`) dari `local.properties`/environment** — nilai publik, bukan rahasia. Nilai kosong berarti mode lokal saja.
 34. **Build debug Android mengizinkan cleartext hanya ke `10.0.2.2`/`localhost`/`127.0.0.1`** — untuk backend lokal; build release tetap HTTPS-only.
 35. **Migrasi Room 1 → 2 memakai AutoMigration** — hanya menambah tabel `sync_conflicts`. Diuji dengan membuka file database skema v1 yang berisi data.
+
+## Fase 3
+
+36. **Provider AI default: Groq free plan, model `openai/gpt-oss-120b`** — atas permintaan pemilik proyek agar memakai model gratis. Perbandingan (dokumentasi resmi, 28 Sep 2026):
+    - **Groq free plan:** 30 permintaan/menit, 1.000/hari, dan 8K token/menit per model. Data API tidak dipakai untuk training dan tidak disimpan secara default (kecuali ≤30 hari untuk investigasi gangguan/penyalahgunaan). Mendukung `json_schema` strict.
+    - **Gemini free tier:** data dipakai untuk meningkatkan produk Google, jadi kurang cocok untuk catatan pribadi.
+    - **OpenRouter `:free`:** hanya 50 permintaan/hari tanpa membeli kredit.
+37. **Adapter generik OpenAI-compatible** — satu implementasi untuk Groq, Gemini (endpoint kompatibel OpenAI), dan penyedia serupa. Cukup mengganti base URL, model, label, dan pemberitahuan data; tidak ada SDK provider di backend.
+38. **Pembatasan free tier** (semua dapat diubah lewat environment):
+    - 10 permintaan AI per pengguna per hari (spesifikasi menyebut 20; diturunkan untuk layanan gratis).
+    - 800 per hari untuk seluruh server (di bawah batas 1.000/hari).
+    - Maksimal 12.000 karakter per catatan, supaya input dan output muat di 8K token/menit.
+    - Jeda 8 detik antar panggilan provider.
+    - Maksimal 3 percobaan untuk gangguan sementara.
+39. **Kuota direservasi atomik saat job dibuat** (`INSERT … ON CONFLICT DO UPDATE … WHERE count < limit`) untuk pengguna dan global dalam transaksi yang sama. Kuota dikembalikan untuk kegagalan yang bukan salah pengguna (output tidak valid, provider tidak tersedia/menolak, materi berubah/dihapus). Diuji dengan 8 permintaan paralel.
+40. **Hanya versi catatan yang sudah tersinkron yang bisa diproses** — klien mengirim `note_version`; server menolak jika berbeda (409), dan worker menggagalkan job jika catatan berubah sebelum diproses. Hasil untuk versi lama tidak pernah menimpa versi baru; hasil lama diberi label "dari versi catatan lama".
+41. **Catatan yang terlalu panjang ditolak (413) dengan batas yang jelas** — tidak dipotong diam-diam (spesifikasi bagian 7). Rangkuman per bagian untuk dokumen panjang menunggu fase 4.
+42. **Structured output `json_schema` strict + validasi server** — output tidak valid dicoba ulang tepat satu kali lalu gagal dengan pesan jelas. Model mengembalikan `correct_index`; server membuat ID pilihan `a–d` dan ID topik stabil (`<note_id>:<slug topik>`).
+43. **Prompt memperlakukan materi sebagai data** — materi dibungkus `<materi>…</materi>` (penutup blok di dalam materi dinetralkan), dengan instruksi eksplisit untuk mengabaikan perintah di dalam materi. Model tidak diberi tool atau akses data lain.
+44. **Kunci jawaban di tabel `question_keys` terpisah** — `GET /v1/quizzes/{id}` tidak pernah mengirim kunci atau pembahasan. Penilaian deterministik di server, attempt idempotent per `Idempotency-Key`, dan judul sumber dipetakan dari metadata server.
+45. **Worker = proses Python terpisah (`python -m app.worker`)** dengan antrean tabel PostgreSQL:
+    - Klaim job memakai `FOR UPDATE SKIP LOCKED` dan lease 180 detik.
+    - Job yang lease-nya habis bisa diambil ulang.
+    - Hanya pemegang lease (attempt yang sama dan masih `running`) yang boleh menulis hasil.
+    - Heartbeat dicatat saat klaim. Lease 180 detik > 2 × timeout panggilan 60 detik, jadi belum perlu heartbeat berkala.
+46. **Kuis dikerjakan online** (spesifikasi): rangkuman, kuis, dan hasil yang pernah dibuka di-cache di tabel Room `remote_cache` (database per akun), jadi bisa dibaca offline dengan label "Offline". Status "soal sudah dilaporkan" belum disimpan di klien; server mengabaikan laporan ganda.
+47. **Persetujuan pengiriman data diminta sekali per akun per provider** — teks pemberitahuan berasal dari server (`STUDYFLOW_AI_DATA_NOTICE`), sehingga tetap akurat jika provider diganti. Mode demo diberi label "Demo, bukan AI" di semua layar.
+48. **`httpx2` sebagai klien HTTP runtime** — penerus httpx yang direkomendasikan Starlette; API-nya sama dengan httpx, dan juga dipakai untuk TestClient.

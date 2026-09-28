@@ -1,6 +1,6 @@
 # Kontrak API
 
-Status: `GET /health`, `GET /v1/me`, `POST /v1/sync/push`, dan `GET /v1/sync/pull` sudah diimplementasikan (fase 2). Endpoint lain adalah kontrak rancangan (spesifikasi bagian 10).
+Status: endpoint kesehatan, akun, sinkronisasi (fase 2), dan AI catatan (fase 3) sudah diimplementasikan. Endpoint dokumen/RAG (fase 4) masih rancangan.
 
 ## Konvensi
 
@@ -99,17 +99,49 @@ Aturan:
 - Pull tidak menimpa entity yang masih punya perubahan lokal tertunda atau konflik. Semua halaman pull diterapkan dalam satu transaksi, mata kuliah lebih dulu.
 - 401 memicu satu kali refresh token lalu request diulang.
 
+### AI catatan (fase 3)
+
+Semua endpoint membutuhkan login. Endpoint yang membuat sesuatu mewajibkan header `Idempotency-Key` (8–128 karakter). Mengirim ulang dengan key yang sama mengembalikan hasil yang sama; key yang sama untuk permintaan berbeda menghasilkan 409 `idempotency_key_reused`.
+
+| Endpoint | Fungsi |
+|---|---|
+| `GET /v1/ai/info` | `{available, mode (unconfigured/demo/live), provider_label, model, data_notice, daily_limit, used_today, max_input_chars, quiz_min_questions, quiz_max_questions}` |
+| `POST /v1/summaries` | `{note_id, note_version}` → **202** job |
+| `POST /v1/quizzes` | `{note_id, note_version, question_count}` → **202** job |
+| `GET /v1/jobs/{id}` | `{id, type, status (queued/running/succeeded/failed), source_id, source_version, error_code, result_id, created_at}` |
+| `GET /v1/summaries/{id}` | Isi rangkuman, `source` (`title`, `version`, `current_version`, `outdated`, `deleted`), `model_id`, `prompt_version`, `is_demo` |
+| `GET /v1/quizzes/{id}` | Soal dan pilihan **tanpa** kunci jawaban dan pembahasan |
+| `POST /v1/quizzes/{id}/attempts` | `{answers: {question_id: option_id \| null}}` → skor dan hasil per soal (`correct_option_id`, `explanation`, `sources[{source_id, title}]`). Penilaian deterministik di server; judul sumber diambil dari metadata server. |
+| `GET /v1/attempts?quiz_id=&limit=` | Riwayat attempt terbaru |
+| `GET /v1/attempts/{id}` | Detail hasil satu attempt |
+| `GET /v1/notes/{id}/ai-results` | Rangkuman dan kuis untuk catatan (termasuk skor terbaik) dan job yang belum selesai/gagal |
+| `POST /v1/questions/{id}/report` | Tandai soal bermasalah → 204 |
+
+Error saat membuat job:
+
+| Status | `code` | Arti |
+|---|---|---|
+| 503 | `service_unavailable` | Provider AI belum dikonfigurasi (kuota tidak dipakai) |
+| 404 | `not_found` | Catatan tidak ada atau milik akun lain |
+| 409 | `source_version_mismatch` | Versi catatan di server berbeda; klien perlu sinkron dulu |
+| 413 | `source_too_large` | Melebihi `max_input_chars`; `details` berisi `length` dan `max` |
+| 422 | `source_empty` / `invalid_input` | Catatan kosong / jumlah soal di luar batas |
+| 429 | `quota_exceeded` / `service_quota_exceeded` | Kuota harian pengguna / kuota global layanan gratis habis |
+
+`error_code` job yang gagal: `source_changed`, `source_deleted`, `invalid_output`, `provider_unavailable`, `provider_rejected`. Untuk semua kode ini kuota dikembalikan.
+
+Alur worker:
+1. Klaim job dengan `FOR UPDATE SKIP LOCKED` dan lease.
+2. Pastikan versi catatan masih sama.
+3. Panggil provider dengan structured output (`json_schema` strict).
+4. Validasi struktur. Jika output tidak valid, coba ulang **satu kali**, lalu gagal.
+5. Jika provider membalas 429, 5xx, atau timeout, jadwalkan ulang (menghormati `Retry-After`, backoff 15 detik sampai 10 menit, maks. `ai_max_attempts`).
+6. Tulis hasil hanya jika lease masih dipegang worker itu.
+
 ## Rancangan
 
 | Endpoint | Fungsi | Fase |
 |---|---|---|
-| `POST /v1/summaries` | `source_ref` + `source_version` → 202 + `job_id` | 3 |
-| `GET /v1/summaries/{id}` | Hasil + rujukan | 3 |
-| `POST /v1/quizzes` | `source_ref` + `source_version` + `question_count` → 202 | 3 |
-| `GET /v1/quizzes/{id}` | Soal tanpa answer key | 3 |
-| `POST /v1/quizzes/{id}/attempts` | Jawaban + `Idempotency-Key` → skor dan pembahasan | 3 |
-| `GET /v1/attempts` | Riwayat berhalaman | 3 |
-| `GET /v1/jobs/{id}` | Status, tahap, `result_type`, `result_id` | 3 |
 | `POST /v1/documents` | Multipart PDF + `course_id` → 202 | 4 |
 | `GET /v1/documents/{id}` | Metadata dan status | 4 |
 | `GET /v1/documents/{id}/download` | Unduh privat setelah cek kepemilikan | 4 |

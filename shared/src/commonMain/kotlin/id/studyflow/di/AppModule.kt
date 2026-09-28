@@ -6,6 +6,9 @@ import id.studyflow.data.SystemAppClock
 import id.studyflow.data.UuidGenerator
 import id.studyflow.data.auth.SessionManager
 import id.studyflow.data.local.DatabaseManager
+import id.studyflow.data.ai.AiRepository
+import id.studyflow.data.remote.AiApi
+import id.studyflow.data.remote.ApiCaller
 import id.studyflow.data.remote.AuthApi
 import id.studyflow.data.remote.ServerConfig
 import id.studyflow.data.remote.SyncApi
@@ -27,6 +30,10 @@ import id.studyflow.ui.dashboard.HomeViewModel
 import id.studyflow.ui.notes.NoteEditorViewModel
 import id.studyflow.ui.progress.ProgressViewModel
 import id.studyflow.ui.settings.SettingsViewModel
+import id.studyflow.ui.study.QuizHistoryViewModel
+import id.studyflow.ui.study.QuizViewModel
+import id.studyflow.ui.study.StudyNoteViewModel
+import id.studyflow.ui.study.SummaryViewModel
 import id.studyflow.ui.tasks.TaskEditorViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,7 +57,10 @@ val dataModule = module {
 
     single { AuthApi(get(), get()) }
     single { SessionManager(get(), get(), get(), get(), get()) }
-    single { SyncApi(get(), baseUrl = { get<ServerConfig>().apiBaseUrl }, tokens = get<SessionManager>()) }
+    single { ApiCaller(get(), baseUrl = { get<ServerConfig>().apiBaseUrl }, tokens = get<SessionManager>()) }
+    single { SyncApi(get()) }
+    single { AiApi(get()) }
+    single { AiRepository(get(), get(), get()) }
     single { SyncEngine(get(), get(), get()) }
     single { SyncManager(get(), get(), get(), get(), get()) }
     single { ConflictRepository(get(), get()) }
@@ -68,6 +78,10 @@ val viewModelModule = module {
     viewModel { SettingsViewModel(get(), get()) }
     viewModel { AccountViewModel(get(), get(), get(), get(), get()) }
     viewModel { ConflictsViewModel(get()) }
+    viewModel { params -> StudyNoteViewModel(params.get(), get(), get(), get(), get()) }
+    viewModel { params -> SummaryViewModel(params.get(), get()) }
+    viewModel { params -> QuizViewModel(params[0], params[1], get(), get()) }
+    viewModel { QuizHistoryViewModel(get()) }
 }
 
 fun initKoin(platformModule: Module, appDeclaration: KoinAppDeclaration = {}) = startKoin {

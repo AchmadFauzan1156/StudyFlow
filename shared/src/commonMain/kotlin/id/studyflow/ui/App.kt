@@ -52,6 +52,9 @@ import id.studyflow.ui.dashboard.HomeScreen
 import id.studyflow.ui.notes.NoteEditorScreen
 import id.studyflow.ui.progress.ProgressScreen
 import id.studyflow.ui.settings.SettingsScreen
+import id.studyflow.ui.study.QuizScreen
+import id.studyflow.ui.study.StudyNoteScreen
+import id.studyflow.ui.study.SummaryScreen
 import id.studyflow.ui.tasks.TaskEditorScreen
 import id.studyflow.ui.theme.StudyFlowTheme
 import org.koin.compose.koinInject
@@ -107,7 +110,10 @@ fun App() {
                                 label = { Text(item.label) },
                                 icon = { Icon(item.icon, contentDescription = null) },
                                 selected = index == selectedIndex,
-                                onClick = { navController.navigateTopLevel(item.route) },
+                                onClick = {
+                                    lastTopLevel = index
+                                    navController.navigateTopLevel(item.route)
+                                },
                                 modifier = Modifier.padding(horizontal = 12.dp),
                             )
                         }
@@ -122,7 +128,10 @@ fun App() {
                             topLevels.forEachIndexed { index, item ->
                                 NavigationBarItem(
                                     selected = index == selectedIndex,
-                                    onClick = { navController.navigateTopLevel(item.route) },
+                                    onClick = {
+                                        lastTopLevel = index
+                                        navController.navigateTopLevel(item.route)
+                                    },
                                     icon = { Icon(item.icon, contentDescription = null) },
                                     label = { Text(item.label, maxLines = 1) },
                                 )
@@ -151,7 +160,9 @@ private fun StudyFlowNavHost(navController: NavHostController, modifier: Modifie
         composable<CoursesRoute> {
             CoursesScreen(onOpenCourse = { navController.navigate(CourseDetailRoute(it)) })
         }
-        composable<ProgressRoute> { ProgressScreen() }
+        composable<ProgressRoute> {
+            ProgressScreen(onOpenAttempt = { quizId, attemptId -> navController.navigate(QuizRoute(quizId, attemptId)) })
+        }
         composable<SettingsRoute> {
             SettingsScreen(
                 onOpenAuth = { navController.navigate(AuthRoute) },
@@ -170,7 +181,27 @@ private fun StudyFlowNavHost(navController: NavHostController, modifier: Modifie
                 onBack = { navController.popBackStack() },
                 onOpenNote = { noteId -> navController.navigate(NoteEditorRoute(route.courseId, noteId)) },
                 onOpenTask = { taskId -> navController.navigate(TaskEditorRoute(route.courseId, taskId)) },
+                onOpenStudy = { noteId -> navController.navigate(StudyNoteRoute(noteId)) },
             )
+        }
+        composable<StudyNoteRoute> { entry ->
+            val route = entry.toRoute<StudyNoteRoute>()
+            StudyNoteScreen(
+                noteId = route.noteId,
+                zone = koinInject<AppClock>().currentZone(),
+                onBack = { navController.popBackStack() },
+                onOpenSummary = { navController.navigate(SummaryRoute(it)) },
+                onOpenQuiz = { navController.navigate(QuizRoute(it)) },
+            )
+        }
+        composable<SummaryRoute> { entry ->
+            SummaryScreen(entry.toRoute<SummaryRoute>().summaryId, koinInject<AppClock>().currentZone()) {
+                navController.popBackStack()
+            }
+        }
+        composable<QuizRoute> { entry ->
+            val route = entry.toRoute<QuizRoute>()
+            QuizScreen(route.quizId, route.attemptId, onBack = { navController.popBackStack() })
         }
         composable<NoteEditorRoute> { entry ->
             val route = entry.toRoute<NoteEditorRoute>()

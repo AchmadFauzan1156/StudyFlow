@@ -5,7 +5,10 @@ Aplikasi belajar pribadi untuk mahasiswa: simpan materi per mata kuliah, kelola 
 - **Aplikasi**: Kotlin Multiplatform + Compose Multiplatform (Android dan desktop Windows).
 - **Backend**: Python + FastAPI + PostgreSQL (Supabase untuk Auth dan database terkelola).
 
-Status saat ini: **fase 0–2 selesai**. Mode lokal tanpa akun, lalu akun Supabase dengan sinkronisasi offline-first (outbox, konflik, isolasi per akun). Rincian di [docs/PROGRESS.md](docs/PROGRESS.md), rencana di [docs/PLAN.md](docs/PLAN.md).
+Status saat ini: **fase 0–3 selesai**:
+- Mode lokal tanpa akun.
+- Akun Supabase dengan sinkronisasi offline-first (outbox, konflik, isolasi per akun).
+- Rangkuman dan kuis pilihan ganda dari catatan memakai **model AI gratis (Groq free plan)** dengan kuota harian, beserta riwayat skor yang bisa dibaca offline. Rincian di [docs/PROGRESS.md](docs/PROGRESS.md), rencana di [docs/PLAN.md](docs/PLAN.md).
 
 ## Struktur
 
@@ -14,7 +17,7 @@ Status saat ini: **fase 0–2 selesai**. Mode lokal tanpa akun, lalu akun Supaba
 | `shared/` | UI bersama, ViewModel, domain, repository, Room, klien Auth/sinkronisasi (commonMain); adapter Android dan desktop |
 | `androidApp/` | Entry point Android |
 | `desktopApp/` | Entry point desktop dan packaging |
-| `backend/` | FastAPI: `/health`, `/v1/me`, `/v1/sync/push`, `/v1/sync/pull`; migrasi Alembic; fake provider AI |
+| `backend/` | FastAPI (API) + worker AI dalam satu codebase; migrasi Alembic; provider AI (Groq/OpenAI-compatible dan demo) |
 | `docs/` | Rencana, keputusan, dependency, kontrak API, progres |
 
 ## Prasyarat
@@ -71,6 +74,32 @@ uv run uvicorn app.main:app --reload --port 8000
 Buka `http://127.0.0.1:8000/health` dan dokumentasi interaktif di `http://127.0.0.1:8000/docs`.
 
 Di Supabase: jalankan `uv run alembic upgrade head` dengan `STUDYFLOW_DATABASE_URL` proyekmu. Migrasi mengaktifkan RLS default-deny dan mencabut hak `anon`/`authenticated` pada tabel bisnis.
+
+### Mengaktifkan AI gratis (Groq)
+
+1. Buat akun dan API key sendiri di https://console.groq.com/keys (free plan). Jangan tempel key ke chat atau commit.
+2. Isi di `backend/.env`:
+   ```properties
+   STUDYFLOW_AI_PROVIDER=openai_compatible
+   STUDYFLOW_AI_API_KEY=<key kamu>
+   ```
+   Default model: `openai/gpt-oss-120b` lewat `https://api.groq.com/openai/v1`.
+3. Jalankan API dan **worker** (proses terpisah; worker yang memanggil AI):
+   ```powershell
+   uv run uvicorn app.main:app --port 8000
+   uv run python -m app.worker
+   ```
+
+Pembatasan agar tetap gratis (semua dapat diubah di `.env`):
+- 10 permintaan AI per pengguna per hari, dan 800 per hari untuk seluruh server (free plan Groq: 1.000/hari).
+- Maksimal 12.000 karakter per catatan. Catatan yang lebih panjang ditolak dengan jelas, tidak dipotong diam-diam.
+- Jeda minimal 8 detik antar panggilan AI di worker.
+- Jika Groq membalas 429 atau timeout, job dijadwalkan ulang (maks. 3 percobaan).
+- Kuota dikembalikan jika job gagal bukan karena pengguna.
+
+Sebelum materi dikirim, aplikasi menampilkan pemberitahuan penyedia AI (teks dari `STUDYFLOW_AI_DATA_NOTICE`) dan meminta persetujuan. Provider lain yang kompatibel OpenAI, misalnya Gemini (`https://generativelanguage.googleapis.com/v1beta/openai`), bisa dipakai dengan mengganti `AI_BASE_URL`, `AI_MODEL`, `AI_PROVIDER_LABEL`, dan **`AI_DATA_NOTICE`**. Perlu diingat, free tier Gemini memakai data untuk meningkatkan produk Google.
+
+Untuk mencoba tanpa API key: `STUDYFLOW_AI_PROVIDER=fake`. Hasilnya berlabel **[Demo]** dan tidak memakai AI.
 
 ### Tes backend
 

@@ -110,6 +110,17 @@ data class ConflictEntity(
     @ColumnInfo(name = "detected_at") val detectedAt: Long,
 )
 
+/**
+ * Salinan respons server (rangkuman, kuis, hasil kuis) agar tetap bisa dibaca offline.
+ * Berada di database per akun sehingga tidak pernah terbagi antar pengguna.
+ */
+@Entity(tableName = "remote_cache")
+data class RemoteCacheEntity(
+    @PrimaryKey val key: String,
+    val json: String,
+    @ColumnInfo(name = "fetched_at") val fetchedAt: Long,
+)
+
 @Entity(tableName = "app_settings")
 data class SettingEntity(
     @PrimaryKey val key: String,

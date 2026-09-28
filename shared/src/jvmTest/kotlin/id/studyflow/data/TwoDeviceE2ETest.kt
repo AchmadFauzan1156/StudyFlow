@@ -7,7 +7,10 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.plugin
 import kotlinx.coroutines.flow.first
+import id.studyflow.data.ai.NoteReadiness
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException
 import java.util.UUID
 import javax.crypto.Mac
@@ -132,5 +135,42 @@ class TwoDeviceE2ETest {
         val bob = device(UUID.randomUUID().toString())
         assertEquals(0, bob.sync.syncOnce().pulled)
         assertTrue(bob.courses.observeCourses().first().isEmpty())
+    }
+
+    /** Membutuhkan worker (`python -m app.worker`) yang berjalan dengan provider demo; aktif jika STUDYFLOW_E2E_AI=1. */
+    @Test
+    fun aiQuizFlowThroughWorker() = runBlocking<Unit> {
+        if (!enabled || System.getenv("STUDYFLOW_E2E_AI") != "1") return@runBlocking
+        val d = device(UUID.randomUUID().toString())
+        val courseId = d.courses.create("Kriptografi", null)
+        val noteId = d.notes.create(courseId, "RSA", "RSA memakai dua bilangan prima. Modulus n = p kali q. Kunci publik e dan n.")
+        d.sync.syncOnce()
+        val version = (d.ai.noteReadiness(noteId) as NoteReadiness.Ready).version
+        assertEquals("demo", d.ai.info().value.mode)
+
+        val key = UUID.randomUUID().toString()
+        val queued = d.ai.requestQuiz(noteId, version, 3, key)
+        assertEquals(queued.id, d.ai.requestQuiz(noteId, version, 3, key).id, "idempotency key yang sama")
+        var job = queued
+        withTimeout(30_000) {
+            while (!job.isTerminal) {
+                delay(500)
+                job = d.ai.job(queued.id)
+            }
+        }
+        assertEquals("succeeded", job.status)
+
+        val quiz = d.ai.quiz(job.resultId!!).value
+        assertEquals(3, quiz.questions.size)
+        assertTrue(quiz.isDemo)
+        val answers = quiz.questions.associate { it.id to it.options.first().id }
+        val attemptKey = UUID.randomUUID().toString()
+        val attempt = d.ai.submitAttempt(quiz.id, answers, attemptKey)
+        assertEquals(attempt.id, d.ai.submitAttempt(quiz.id, answers, attemptKey).id, "pengiriman ganda tidak menggandakan")
+        assertEquals(3, attempt.total)
+        assertEquals(attempt.results.count { it.correct }, attempt.score)
+        assertTrue(attempt.results.all { r -> r.sources.single().title == "RSA" })
+        assertEquals(listOf(attempt.id), d.ai.attempts().value.map { it.id })
+        assertEquals(1, d.ai.noteResults(noteId).value.results.count { it.type == "quiz" })
     }
 }

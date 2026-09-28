@@ -17,10 +17,11 @@ import kotlinx.coroutines.IO
         OutboxEntity::class,
         SettingEntity::class,
         ConflictEntity::class,
+        RemoteCacheEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 @ConstructedBy(StudyFlowDatabaseConstructor::class)
 abstract class StudyFlowDatabase : RoomDatabase() {
@@ -30,6 +31,7 @@ abstract class StudyFlowDatabase : RoomDatabase() {
     abstract fun outboxDao(): OutboxDao
     abstract fun settingsDao(): SettingsDao
     abstract fun syncDao(): SyncDao
+    abstract fun cacheDao(): CacheDao
 
     companion object {
         /** Mode lokal (tanpa akun). Tiap akun memakai file terpisah, lihat [accountDbName]. */

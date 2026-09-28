@@ -16,10 +16,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** Database fase 1 (skema v1) harus terbuka di versi 2 tanpa kehilangan data. */
+/** Database fase 1 (skema v1) harus terbuka di versi terbaru tanpa kehilangan data. */
 class MigrationTest {
     @Test
-    fun version1DatabaseMigratesToVersion2() = runBlocking<Unit> {
+    fun version1DatabaseMigratesToLatest() = runBlocking<Unit> {
         val schema = Json.parseToJsonElement(
             File("schemas/id.studyflow.data.local.StudyFlowDatabase/1.json").readText(),
         ).jsonObject["database"]!!.jsonObject
@@ -51,7 +51,8 @@ class MigrationTest {
             try {
                 assertEquals("Kriptografi", db.courseDao().getById("c1")!!.name)
                 assertEquals(1, db.outboxDao().getAll().size)
-                assertTrue(db.syncDao().conflicts().isEmpty(), "tabel sync_conflicts dibuat oleh migrasi")
+                assertTrue(db.syncDao().conflicts().isEmpty(), "tabel sync_conflicts dibuat oleh migrasi 1→2")
+                assertEquals(null, db.cacheDao().get("apa-saja"), "tabel remote_cache dibuat oleh migrasi 2→3")
             } finally {
                 db.close()
             }

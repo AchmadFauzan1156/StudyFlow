@@ -54,6 +54,7 @@ import id.studyflow.ui.components.ConfirmDeleteDialog
 import id.studyflow.ui.components.EmptyState
 import id.studyflow.ui.components.InfoCard
 import id.studyflow.ui.components.TaskRow
+import id.studyflow.ui.study.StudyTab
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -137,6 +138,7 @@ fun CourseDetailScreen(
     onBack: () -> Unit,
     onOpenNote: (String?) -> Unit,
     onOpenTask: (String?) -> Unit,
+    onOpenStudy: (String) -> Unit,
 ) {
     val viewModel = koinViewModel<CourseDetailViewModel>(key = "course-$courseId") { parametersOf(courseId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -197,12 +199,7 @@ fun CourseDetailScreen(
                         contentModifier,
                     )
                     TAB_TASKS -> TasksTab(state, onOpenTask, viewModel::toggleDone, contentModifier)
-                    else -> PlaceholderTab(
-                        "Belajar dengan AI",
-                        "Rangkuman dan kuis dari catatan membutuhkan akun dan koneksi internet. " +
-                            "Materi yang dipilih akan dikirim ke penyedia AI setelah kamu menyetujuinya.",
-                        contentModifier,
-                    )
+                    else -> StudyTab(state.notes, onOpenStudy, contentModifier)
                 }
             }
         }

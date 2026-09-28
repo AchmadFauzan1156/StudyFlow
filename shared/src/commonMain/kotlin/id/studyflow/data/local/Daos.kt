@@ -103,3 +103,12 @@ interface SettingsDao {
     @Upsert
     suspend fun put(setting: SettingEntity)
 }
+
+@Dao
+interface CacheDao {
+    @Query("SELECT * FROM remote_cache WHERE `key` = :key")
+    suspend fun get(key: String): RemoteCacheEntity?
+
+    @Upsert
+    suspend fun put(entry: RemoteCacheEntity)
+}

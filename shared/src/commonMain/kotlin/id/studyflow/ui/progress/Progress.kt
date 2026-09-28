@@ -31,7 +31,8 @@ import id.studyflow.data.repository.TaskRepository
 import id.studyflow.domain.DeadlineStatus
 import id.studyflow.domain.TaskStatus
 import id.studyflow.domain.deadlineStatus
-import id.studyflow.ui.components.InfoCard
+import id.studyflow.ui.study.QuizHistorySection
+import org.koin.compose.koinInject
 import id.studyflow.ui.components.StatTile
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -72,7 +73,7 @@ class ProgressViewModel(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProgressScreen() {
+fun ProgressScreen(onOpenAttempt: (quizId: String, attemptId: String) -> Unit) {
     val viewModel = koinViewModel<ProgressViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -97,10 +98,7 @@ fun ProgressScreen() {
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                InfoCard(
-                    title = "Riwayat kuis",
-                    message = "Skor dan akurasi per topik akan muncul di sini setelah fitur kuis tersedia.",
-                )
+                QuizHistorySection(zone = koinInject<AppClock>().currentZone(), onOpenAttempt = onOpenAttempt)
             }
         }
     }
