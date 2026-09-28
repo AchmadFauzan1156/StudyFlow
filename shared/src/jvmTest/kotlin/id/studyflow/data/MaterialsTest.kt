@@ -11,7 +11,7 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.IOException
-import io.ktor.utils.io.readRemaining
+import io.ktor.utils.io.readBuffer
 import kotlinx.io.readByteArray
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -56,7 +56,7 @@ class MaterialsTest {
             val channel = io.ktor.utils.io.ByteChannel()
             b.writeTo(channel)
             channel.flushAndClose()
-            channel.readRemaining().readByteArray()
+            channel.readBuffer().readByteArray()
         }
         else -> error("body tidak dikenal: ${b::class}")
     }

@@ -173,6 +173,18 @@ class TwoDeviceE2ETest {
         assertTrue(attempt.results.all { r -> r.sources.single().title == "RSA" })
         assertEquals(listOf(attempt.id), d.ai.attempts().value.map { it.id })
         assertEquals(1, d.ai.noteResults(noteId).value.results.count { it.type == "quiz" })
+
+        // Fase 5: progres per topik dan kartu dari jawaban yang salah.
+        val wrong = attempt.results.count { !it.correct }
+        val topics = d.ai.topics().value.topics
+        assertEquals(3, topics.sumOf { it.answered })
+        assertTrue(topics.all { it.noteTitle == "RSA" })
+        val cards = d.ai.dueFlashcards()
+        assertEquals(wrong, cards.dueTotal)
+        cards.cards.firstOrNull()?.let { card ->
+            d.ai.review(card.questionId, remembered = true)
+            assertEquals(wrong - 1, d.ai.dueFlashcards().dueTotal)
+        }
     }
 
     /** Unggah PDF → indexing worker → tanya materi → jawaban bersumber. Butuh worker dan embedding demo. */

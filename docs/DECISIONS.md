@@ -98,3 +98,9 @@ Format: keputusan — alasan. Keputusan produk utama mengikuti spesifikasi arsit
 62. **Satu thread tanya materi per mata kuliah** (thread per dokumen didukung API, belum di UI). Riwayat pesan di-cache per akun untuk dibaca offline.
 63. **Storage: folder lokal untuk development, Supabase Storage bucket privat untuk produksi** lewat REST (`POST/GET /storage/v1/object/{bucket}/{key}`, `DELETE` dengan `prefixes`) dan secret key yang hanya ada di backend. Key berkas acak dengan prefix pemilik dan tidak memuat nama berkas asli. Cleanup dijalankan sebagai job yang bisa diulang.
 64. **Membuka PDF memakai penampil bawaan platform** — desktop membuka berkas sementara lewat `java.awt.Desktop`, Android lewat `FileProvider` (cache privat, izin baca sementara). Penampil bawaan tidak bisa diarahkan ke halaman tertentu, jadi aplikasi menampilkan nomor halaman dan cuplikannya.
+
+## Fase 5
+
+65. **Progres per topik dihitung server dari `answers` + `questions.topic_id`** — soal yang dilaporkan bermasalah dan jawaban kosong tidak dihitung. Topik memakai ID stabil `<note_id>:<slug>` sejak fase 3.
+66. **Rekomendasi rule-based**: minimal 5 jawaban pada topik dan akurasi < 60% → "Perlu latihan". Ambang adalah keputusan produk (dapat diubah lewat `STUDYFLOW_PRACTICE_MIN_ANSWERS` dan `STUDYFLOW_PRACTICE_ACCURACY_THRESHOLD`), bukan ukuran ilmiah penguasaan. Tidak ada training model.
+67. **Flashcard tanpa panggilan AI** — kartu berasal dari soal kuis yang pernah dijawab salah (jawaban benar dan pembahasan sudah terbuka bagi pengguna setelah submission). Penjadwalan memakai Leitner 5 kotak (1/2/4/8/16 hari) di tabel `flashcard_reviews`. Kartu hanya diambil online; progres topik di-cache untuk dibaca offline.

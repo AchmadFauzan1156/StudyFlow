@@ -176,6 +176,14 @@ Alur tanya materi di worker:
 4. Jika ada, potongan dikirim dengan ID pendek (`S1…`). Model harus mengembalikan `source_ids` dari daftar itu; ID lain dianggap output tidak valid (coba ulang sekali, lalu gagal).
 5. Judul dan halaman sumber diambil server dari metadata, bukan dari teks model.
 
+### Progres dan latihan (fase 5)
+
+| Endpoint | Fungsi |
+|---|---|
+| `GET /v1/progress/topics?course_id=` | Per topik: `answered`, `correct`, `accuracy`, `needs_practice`, `note_id`, `note_title`, plus `min_answers` dan `accuracy_threshold`. Soal yang dilaporkan dan jawaban kosong tidak dihitung; topik yang perlu latihan diurutkan lebih dulu. |
+| `GET /v1/flashcards/due` | Hingga 20 kartu jatuh tempo dari soal yang pernah dijawab salah (tanpa soal yang dilaporkan): `question`, `answer`, `explanation`, `topic_label`, `note_title`, `box`, beserta `due_total` |
+| `POST /v1/flashcards/{question_id}/review` | `{remembered}` → Leitner: ingat naik kotak (maks. 5), lupa kembali ke kotak 1; jatuh tempo berikutnya 1/2/4/8/16 hari |
+
 ## Rancangan
 
 Semua endpoint dari spesifikasi bagian 10 sudah diimplementasikan. Yang belum: rangkuman dokumen panjang per bagian dan unggah versi baru untuk dokumen yang sama.

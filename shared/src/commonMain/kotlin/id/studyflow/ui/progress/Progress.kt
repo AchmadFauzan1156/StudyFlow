@@ -32,6 +32,7 @@ import id.studyflow.domain.DeadlineStatus
 import id.studyflow.domain.TaskStatus
 import id.studyflow.domain.deadlineStatus
 import id.studyflow.ui.study.QuizHistorySection
+import id.studyflow.ui.study.TopicsSection
 import org.koin.compose.koinInject
 import id.studyflow.ui.components.StatTile
 import kotlinx.coroutines.flow.SharingStarted
@@ -73,7 +74,11 @@ class ProgressViewModel(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProgressScreen(onOpenAttempt: (quizId: String, attemptId: String) -> Unit) {
+fun ProgressScreen(
+    onOpenAttempt: (quizId: String, attemptId: String) -> Unit,
+    onOpenNote: (String) -> Unit,
+    onOpenFlashcards: () -> Unit,
+) {
     val viewModel = koinViewModel<ProgressViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -98,6 +103,7 @@ fun ProgressScreen(onOpenAttempt: (quizId: String, attemptId: String) -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
+                TopicsSection(onOpenNote, onOpenFlashcards)
                 QuizHistorySection(zone = koinInject<AppClock>().currentZone(), onOpenAttempt = onOpenAttempt)
             }
         }

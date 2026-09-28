@@ -135,6 +135,43 @@ data class NoteResultsDto(
 )
 
 @Serializable
+data class TopicDto(
+    @SerialName("topic_id") val topicId: String,
+    val label: String,
+    @SerialName("note_id") val noteId: String,
+    @SerialName("note_title") val noteTitle: String? = null,
+    @SerialName("course_id") val courseId: String? = null,
+    val answered: Int,
+    val correct: Int,
+    val accuracy: Double,
+    @SerialName("needs_practice") val needsPractice: Boolean,
+)
+
+@Serializable
+data class ProgressDto(
+    val topics: List<TopicDto>,
+    @SerialName("min_answers") val minAnswers: Int,
+    @SerialName("accuracy_threshold") val accuracyThreshold: Double,
+)
+
+@Serializable
+data class FlashcardDto(
+    @SerialName("question_id") val questionId: String,
+    val question: String,
+    val answer: String,
+    val explanation: String,
+    @SerialName("topic_label") val topicLabel: String,
+    @SerialName("note_title") val noteTitle: String? = null,
+    val box: Int,
+)
+
+@Serializable
+data class FlashcardsDto(val cards: List<FlashcardDto>, @SerialName("due_total") val dueTotal: Int)
+
+@Serializable
+private data class ReviewRequest(val remembered: Boolean)
+
+@Serializable
 private data class GenerateRequest(
     @SerialName("note_id") val noteId: String,
     @SerialName("note_version") val noteVersion: Int,
@@ -205,6 +242,24 @@ class AiApi(private val api: ApiCaller) {
 
     suspend fun noteResults(noteId: String): NoteResultsDto = api.call(NoteResultsDto.serializer()) { token ->
         get(api.url("/v1/notes/$noteId/ai-results")) { authorize(token) }
+    }
+
+    suspend fun topics(): ProgressDto = api.call(ProgressDto.serializer()) { token ->
+        get(api.url("/v1/progress/topics")) { authorize(token) }
+    }
+
+    suspend fun dueFlashcards(): FlashcardsDto = api.call(FlashcardsDto.serializer()) { token ->
+        get(api.url("/v1/flashcards/due")) { authorize(token) }
+    }
+
+    suspend fun review(questionId: String, remembered: Boolean) {
+        api.send { token ->
+            post(api.url("/v1/flashcards/$questionId/review")) {
+                authorize(token)
+                contentType(ContentType.Application.Json)
+                setBody(ReviewRequest(remembered))
+            }
+        }
     }
 
     suspend fun reportQuestion(questionId: String, reason: String?) {

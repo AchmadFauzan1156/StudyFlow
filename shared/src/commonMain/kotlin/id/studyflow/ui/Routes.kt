@@ -17,3 +17,4 @@ import kotlinx.serialization.Serializable
 @Serializable data class DocumentRoute(val documentId: String)
 @Serializable data class AskRoute(val courseId: String, val courseName: String)
 @Serializable data class SourceRoute(val chunkId: String)
+@Serializable data object FlashcardsRoute

@@ -55,6 +55,7 @@ import id.studyflow.ui.materials.SourceScreen
 import id.studyflow.ui.notes.NoteEditorScreen
 import id.studyflow.ui.progress.ProgressScreen
 import id.studyflow.ui.settings.SettingsScreen
+import id.studyflow.ui.study.FlashcardsScreen
 import id.studyflow.ui.study.QuizScreen
 import id.studyflow.ui.study.StudyNoteScreen
 import id.studyflow.ui.study.SummaryScreen
@@ -164,8 +165,13 @@ private fun StudyFlowNavHost(navController: NavHostController, modifier: Modifie
             CoursesScreen(onOpenCourse = { navController.navigate(CourseDetailRoute(it)) })
         }
         composable<ProgressRoute> {
-            ProgressScreen(onOpenAttempt = { quizId, attemptId -> navController.navigate(QuizRoute(quizId, attemptId)) })
+            ProgressScreen(
+                onOpenAttempt = { quizId, attemptId -> navController.navigate(QuizRoute(quizId, attemptId)) },
+                onOpenNote = { navController.navigate(StudyNoteRoute(it)) },
+                onOpenFlashcards = { navController.navigate(FlashcardsRoute) },
+            )
         }
+        composable<FlashcardsRoute> { FlashcardsScreen(onBack = { navController.popBackStack() }) }
         composable<SettingsRoute> {
             SettingsScreen(
                 onOpenAuth = { navController.navigate(AuthRoute) },

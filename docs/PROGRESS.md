@@ -1,5 +1,34 @@
 # Progres
 
+## Checkpoint 5 — Fase 5: progres per topik, rekomendasi, flashcard (29 September 2026)
+
+### Selesai
+- **Backend**:
+  - `GET /v1/progress/topics`: akurasi per topik tanpa soal yang dilaporkan dan jawaban kosong, dengan rekomendasi "perlu latihan" (≥ 5 jawaban dan < 60%, dapat diubah).
+  - Flashcard dari soal yang pernah dijawab salah: `GET /v1/flashcards/due` dan `POST /v1/flashcards/{id}/review` (Leitner 1/2/4/8/16 hari).
+  - Migrasi `0004` (RLS default-deny).
+- **Aplikasi**:
+  - Layar Progres menampilkan "Penguasaan per topik" (bilah akurasi, label "Perlu latihan", ketuk untuk membuka catatan sumber di layar belajar), dengan cache offline.
+  - Layar **Latihan kartu**: lihat jawaban, lalu "Sudah ingat"/"Belum ingat".
+
+### Perintah yang dijalankan dan hasilnya
+
+| Perintah | Hasil |
+|---|---|
+| `uv run pytest` dengan PostgreSQL | 110 lulus. 3 tes baru: akurasi/rekomendasi/pengurutan topik, jawaban kosong dan soal dilaporkan tidak dihitung, kartu hanya dari jawaban salah dengan jadwal Leitner, dan isolasi akun. Tes dibuat deterministik dengan memilih pengecoh `[Demo]`, karena percobaan pertama sempat flaky. |
+| `gradlew clean :shared:jvmTest --rerun-tasks` (E2E aktif) | 59 lulus; E2E alur kuis kini juga memeriksa progres per topik dan pengurangan kartu setelah review |
+| `gradlew :androidApp:assembleDebug :desktopApp:jar` | Berhasil tanpa peringatan di kode proyek |
+
+### Keterbatasan
+- UI fase 5 belum diuji manual lewat screenshot (dihemat atas permintaan pemilik proyek). Logika dan API tercakup tes E2E.
+- Ambang rekomendasi dan interval Leitner adalah nilai awal yang perlu dievaluasi dengan pengguna.
+- Kartu latihan hanya tersedia online.
+
+### Langkah berikutnya (fase 6)
+Lihat [PLAN.md](PLAN.md#langkah-fase-6-rinci): Docker, packaging, CI dengan pemindai rahasia, panduan deployment, dan demo end-to-end.
+
+---
+
 ## Checkpoint 4 — Fase 4: PDF dan tanya materi, provider Gemini (29 September 2026)
 
 Keputusan pemilik proyek: provider AI diganti dari Groq ke **Google Gemini** (gratis) untuk generasi dan embedding. Rincian di [DECISIONS.md](DECISIONS.md) #49–#64.

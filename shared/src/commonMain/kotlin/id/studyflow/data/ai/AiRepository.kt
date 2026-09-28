@@ -12,12 +12,14 @@ import id.studyflow.data.remote.AttemptDto
 import id.studyflow.data.remote.AttemptSummaryDto
 import id.studyflow.data.remote.ChunkDto
 import id.studyflow.data.remote.DocumentDto
+import id.studyflow.data.remote.FlashcardsDto
 import id.studyflow.data.remote.JobDto
 import id.studyflow.data.remote.MaterialsApi
 import id.studyflow.data.remote.MessageDto
 import id.studyflow.data.remote.NotAuthenticatedException
 import id.studyflow.data.remote.NoteResultsDto
 import id.studyflow.data.remote.PageDto
+import id.studyflow.data.remote.ProgressDto
 import id.studyflow.data.remote.QuizDto
 import id.studyflow.data.remote.SummaryDto
 import id.studyflow.data.remote.ThreadDto
@@ -121,6 +123,15 @@ class AiRepository(
 
     suspend fun noteResults(noteId: String): Loaded<NoteResultsDto> =
         cached("note-results:$noteId", NoteResultsDto.serializer()) { api.noteResults(noteId) }
+
+    // ---------- Progres & flashcard ----------
+
+    suspend fun topics(): Loaded<ProgressDto> = cached("progress:topics", ProgressDto.serializer()) { api.topics() }
+
+    /** Kartu latihan hanya diambil online (jadwalnya ditentukan server). */
+    suspend fun dueFlashcards(): FlashcardsDto = guard { api.dueFlashcards() }
+
+    suspend fun review(questionId: String, remembered: Boolean) = guard { api.review(questionId, remembered) }
 
     suspend fun reportQuestion(questionId: String, reason: String?) = guard { api.reportQuestion(questionId, reason) }
 

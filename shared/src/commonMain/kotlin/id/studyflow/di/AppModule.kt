@@ -35,7 +35,9 @@ import id.studyflow.ui.materials.SourceViewModel
 import id.studyflow.ui.notes.NoteEditorViewModel
 import id.studyflow.ui.progress.ProgressViewModel
 import id.studyflow.ui.settings.SettingsViewModel
+import id.studyflow.ui.study.FlashcardsViewModel
 import id.studyflow.ui.study.QuizHistoryViewModel
+import id.studyflow.ui.study.TopicsViewModel
 import id.studyflow.ui.study.QuizViewModel
 import id.studyflow.ui.study.StudyNoteViewModel
 import id.studyflow.ui.study.SummaryViewModel
@@ -88,6 +90,8 @@ val viewModelModule = module {
     viewModel { params -> SummaryViewModel(params.get(), get()) }
     viewModel { params -> QuizViewModel(params[0], params[1], get(), get()) }
     viewModel { QuizHistoryViewModel(get()) }
+    viewModel { TopicsViewModel(get()) }
+    viewModel { FlashcardsViewModel(get()) }
     viewModel { params -> MaterialsViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> DocumentViewModel(params.get(), get()) }
     viewModel { params -> AskViewModel(params.get(), get(), get()) }
