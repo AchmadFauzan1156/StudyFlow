@@ -1,0 +1,76 @@
+# ---------- Build & IDE ----------
+.gradle/
+.kotlin/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+local.properties
+.idea/
+*.iml
+.fleet/
+.vscode/
+out/
+captures/
+.externalNativeBuild/
+.cxx/
+*.hprof
+*.log
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Secrets ----------
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+google-services.json
+service-account*.json
+
+# ---------- Python backend ----------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# ---------- AI agent & assistant files ----------
+# Instruksi/konfigurasi lokal asisten AI tidak ikut di-commit.
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+AGENT.md
+.agents/
+.codex/
+.cursor/
+.cursorrules
+.cursorignore
+.aider*
+.continue/
+.windsurf/
+.windsurfrules
+.gemini/
+GEMINI.md
+.copilot/
+.github/copilot-instructions.md
+.clinerules
+.cline/
+.roo/
+.roomodes
+.kiro/
+.junie/
+.augment/
+.tabnine/
+.codeium/
+.sourcegraph/
+.mcp.json
+mcp.json
+*.claude.json
