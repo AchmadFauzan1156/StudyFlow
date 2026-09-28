@@ -5,11 +5,13 @@ Aplikasi belajar pribadi untuk mahasiswa: simpan materi per mata kuliah, kelola 
 - **Aplikasi**: Kotlin Multiplatform + Compose Multiplatform (Android dan desktop Windows).
 - **Backend**: Python + FastAPI + PostgreSQL (Supabase untuk Auth dan database terkelola).
 
-Status saat ini: **fase 0–4 selesai**:
+Status saat ini: **fase 0–6 selesai**:
 - Mode lokal tanpa akun.
 - Akun Supabase dengan sinkronisasi offline-first (outbox, konflik, isolasi per akun).
 - Rangkuman dan kuis pilihan ganda dari catatan memakai **Google Gemini (free tier)** dengan kuota harian, beserta riwayat skor yang bisa dibaca offline.
 - Unggah PDF berbasis teks dan **tanya materi** dengan sumber (judul dan halaman) yang dipetakan server.
+- Progres per topik, rekomendasi latihan, dan latihan kartu (Leitner).
+- Docker (API + worker), paket rilis Android/desktop, CI dengan pemindai rahasia. Lihat [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) dan [docs/DEMO.md](docs/DEMO.md).
 
 Rincian di [docs/PROGRESS.md](docs/PROGRESS.md), rencana di [docs/PLAN.md](docs/PLAN.md).
 
@@ -39,6 +41,8 @@ Rincian di [docs/PROGRESS.md](docs/PROGRESS.md), rencana di [docs/PLAN.md](docs/
 .\gradlew.bat :androidApp:assembleDebug  # APK di androidApp\build\outputs\apk\debug\
 .\gradlew.bat :androidApp:installDebug   # pasang ke emulator/perangkat yang terhubung
 .\gradlew.bat :shared:jvmTest            # tes shared (logika, Room, sinkronisasi, sesi)
+.\gradlew.bat :androidApp:assembleRelease # APK release (bertanda tangan jika keystore.properties ada)
+.\gradlew.bat :desktopApp:packageZip     # paket desktop portabel di desktopAppuild\dist\
 ```
 
 macOS/Linux: ganti `.\gradlew.bat` dengan `./gradlew`.
@@ -73,6 +77,8 @@ Copy-Item .env.example .env          # isi STUDYFLOW_SUPABASE_URL, dll.; jangan 
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --port 8000
 ```
+
+Demo lengkap dengan Docker (tanpa API key): `docker compose -f docker-compose.demo.yml up --build` (lihat [docs/DEMO.md](docs/DEMO.md)).
 
 Buka `http://127.0.0.1:8000/health` dan dokumentasi interaktif di `http://127.0.0.1:8000/docs`.
 

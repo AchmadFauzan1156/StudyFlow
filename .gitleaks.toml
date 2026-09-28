@@ -1,0 +1,15 @@
+# Aturan default gitleaks + pengecualian sempit untuk nilai uji yang memang palsu.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Secret JWT dan idempotency key palsu di tes otomatis"
+paths = ['''(^|/)backend/tests/''', '''(^|/)shared/src/jvmTest/''']
+
+[[allowlists]]
+description = "Dependency pihak ketiga dan output build (tidak di-commit)"
+paths = ['''(^|/)\.venv/''', '''(^|/)build/''', '''(^|/)\.gradle/''']
+
+[[allowlists]]
+description = "Secret HS256 khusus E2E/demo lokal yang didokumentasikan (bukan kredensial nyata)"
+regexes = ['''e2e-secret-with-at-least-32-bytes-0+''', '''demo-only-secret-change-me-0+''']

@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
 }
+
+// Tanda tangan release dibaca dari keystore.properties (tidak di-commit) atau environment variable CI.
+val keystoreProps = Properties().apply {
+    rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+
+fun signingValue(key: String, env: String): String? =
+    providers.environmentVariable(env).orNull ?: keystoreProps.getProperty(key)
 
 android {
     namespace = "id.studyflow.android"
@@ -16,9 +26,23 @@ android {
         versionName = "0.1.0"
     }
 
+    val storeFilePath = signingValue("storeFile", "STUDYFLOW_KEYSTORE_FILE")
+    signingConfigs {
+        if (storeFilePath != null) {
+            create("release") {
+                storeFile = file(storeFilePath)
+                storePassword = signingValue("storePassword", "STUDYFLOW_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "STUDYFLOW_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "STUDYFLOW_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Tanpa keystore, APK release tetap dibuat tetapi tidak bertanda tangan (tidak bisa dipasang).
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
 

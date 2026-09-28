@@ -25,6 +25,7 @@ desktop.ini
 .env.*
 !.env.example
 *.keystore
+keystore.properties
 *.jks
 google-services.json
 service-account*.json
@@ -77,3 +78,4 @@ mcp.json
 
 # ---------- Penyimpanan dokumen lokal (development) ----------
 backend/.storage/
+backend/demo-pdfs/

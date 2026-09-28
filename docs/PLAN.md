@@ -12,10 +12,9 @@ Sumber: spesifikasi arsitektur StudyFlow (28 September 2026). Estimasi waktu sen
 | 5. Personalisasi | Flashcard, histori topik, rekomendasi latihan rule-based | Rekomendasi mengikuti hasil tersimpan | Selesai |
 | 6. Rilis demo | Packaging, backup, Docker, dokumentasi demo, no-secret scan | Instalasi terdokumentasi, demo end-to-end | — |
 
-## Langkah fase 6 (rinci)
+## Setelah fase 6
 
-1. Dockerfile backend (satu image, dua perintah: API dan worker) dan compose untuk demo lokal.
-2. Packaging desktop (MSI) dan APK release bertanda tangan (keystore di luar repo).
-3. Pemindai rahasia (mis. gitleaks) di CI, plus GitHub Actions untuk tes backend dan shared.
-4. Panduan deployment ke Supabase (migrasi, bucket privat, Auth) dan backup database.
-5. Skrip demo end-to-end dan data demo berlabel yang terpisah dari data pengguna.
+Semua fase spesifikasi selesai. Kandidat pekerjaan berikutnya (butuh keputusan pemilik):
+- Verifikasi dengan proyek Supabase dan API key Gemini sungguhan, kalibrasi `STUDYFLOW_RAG_MAX_DISTANCE`, dan evaluasi manual kualitas kuis/jawaban.
+- Rangkuman dokumen panjang per bagian, unggah versi baru dokumen, thread per dokumen di UI.
+- Notifikasi deadline OS, OCR untuk PDF scan, dan target iOS (butuh macOS/Xcode).

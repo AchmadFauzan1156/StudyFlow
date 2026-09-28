@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "**.md"]
+  pull_request:
+    paths-ignore: ["docs/**", "**.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: Pemindai rahasia (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: gitleaks (seluruh riwayat)
+        run: >
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1
+          git /repo --config /repo/.gitleaks.toml --redact --no-banner
+
+  backend:
+    name: Backend (pytest + ruff)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: studyflow
+          POSTGRES_PASSWORD: studyflow-dev
+          POSTGRES_DB: studyflow_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U studyflow -d studyflow_test"
+          --health-interval 2s --health-retries 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - name: Role tiruan Supabase (untuk tes RLS)
+        env:
+          PGPASSWORD: studyflow-dev
+        run: >
+          psql -h localhost -U studyflow -d studyflow_test -v ON_ERROR_STOP=1 -c
+          "CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN;
+          GRANT USAGE ON SCHEMA public TO anon, authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;"
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run pytest
+        env:
+          STUDYFLOW_TEST_DATABASE_URL: postgresql+psycopg://studyflow:studyflow-dev@localhost:5432/studyflow_test
+
+  app:
+    name: Aplikasi (tes shared + build Android/desktop)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v4
+      - name: Android SDK platform 37
+        run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Tes dan build
+        run: ./gradlew :shared:jvmTest :androidApp:assembleDebug :desktopApp:jar --console=plain

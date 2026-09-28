@@ -1,0 +1,58 @@
+# Demo lokal lengkap tanpa API key: PostgreSQL + API + worker dengan provider demo berlabel [Demo].
+# Jalankan: docker compose -f docker-compose.demo.yml up --build
+# Bukan konfigurasi produksi (secret JWT dan password database hanya untuk demo lokal).
+x-backend: &backend
+  build: .
+  environment: &env
+    STUDYFLOW_APP_ENV: development
+    STUDYFLOW_DATABASE_URL: postgresql+psycopg://studyflow:studyflow-dev@db:5432/studyflow
+    STUDYFLOW_SUPABASE_URL: http://auth.demo.local
+    STUDYFLOW_JWT_HS256_SECRET: demo-only-secret-change-me-000000000000
+    STUDYFLOW_AI_PROVIDER: fake
+    STUDYFLOW_EMBEDDING_PROVIDER: fake
+    STUDYFLOW_AI_MIN_INTERVAL_SECONDS: "0"
+    STUDYFLOW_RAG_MAX_DISTANCE: "0.9"
+    STUDYFLOW_STORAGE_LOCAL_DIR: /data/storage
+  volumes:
+    - demo-storage:/data
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: studyflow
+      POSTGRES_PASSWORD: studyflow-dev
+      POSTGRES_DB: studyflow
+    volumes:
+      - demo-db:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studyflow -d studyflow"]
+      interval: 2s
+      retries: 30
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+
+  api:
+    <<: *backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  demo-db:
+  demo-storage:

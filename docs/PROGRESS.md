@@ -1,5 +1,35 @@
 # Progres
 
+## Checkpoint 6 — Fase 6: rilis demonstrasi (29 September 2026)
+
+### Selesai
+- `backend/Dockerfile`: satu image untuk API dan worker, non-root, dependency terkunci. `backend/docker-compose.demo.yml` menjalankan PostgreSQL, migrasi, API, dan worker dengan provider demo.
+- `docs/DEPLOYMENT.md`: Supabase (Auth, JWKS, bucket privat, migrasi), menjalankan container, konfigurasi produksi, rilis Android/desktop, backup dan pemulihan, serta CI.
+- `docs/DEMO.md` dan `backend/scripts/make_demo_pdfs.py`: skrip demo end-to-end dengan PDF demo berlabel.
+- Android: signing release dari `keystore.properties`/environment; tanpa keystore, APK release dibuat unsigned.
+- Desktop: task `packageZip` (folder portabel + runtime Java).
+- `.gitleaks.toml` dan workflow `.github/workflows/ci.yml`: gitleaks, tes backend dengan pgvector, tes shared, dan build Android/desktop.
+
+### Perintah yang dijalankan dan hasilnya
+
+| Perintah | Hasil |
+|---|---|
+| `docker compose -f docker-compose.demo.yml up --build -d` | Image terbangun; migrasi `Exited (0)`; API dan worker berjalan; `/health` OK |
+| 5 tes E2E Kotlin terhadap stack Docker | Lulus (sinkronisasi, konflik, retry, isolasi, kuis via worker, progres/kartu, PDF → tanya materi); log worker tanpa error |
+| gitleaks v8.30.1 pada riwayat git dan folder kerja | Awalnya 7 temuan (semua nilai uji palsu); setelah allowlist sempit: tidak ada kebocoran |
+| `gradlew :androidApp:assembleRelease` tanpa/dengan keystore uji | `androidApp-release-unsigned.apk`; dengan keystore sekali pakai → `androidApp-release.apk` terverifikasi `apksigner` (keystore dihapus) |
+| `gradlew :desktopApp:packageZip` | `StudyFlow-0.1.0-windows.zip` (±79 MB) |
+| `uv run python scripts/make_demo_pdfs.py` | 4 PDF demo (3 materi + 1 scan kosong) |
+| CI GitHub Actions | Lihat hasil run pertama di bawah |
+
+### Keterbatasan
+- MSI/EXE belum dibuat (butuh WiX Toolset).
+- Belum ada deployment nyata; tidak ada deployment berbayar yang dijalankan.
+- Verifikasi dengan Supabase dan Gemini sungguhan masih menunggu key milik pemilik proyek (lihat checkpoint 4).
+- iOS belum dibangun maupun diuji (butuh macOS/Xcode).
+
+---
+
 ## Checkpoint 5 — Fase 5: progres per topik, rekomendasi, flashcard (29 September 2026)
 
 ### Selesai

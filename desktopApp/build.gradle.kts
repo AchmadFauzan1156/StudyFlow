@@ -34,3 +34,13 @@ compose.desktop {
         }
     }
 }
+
+// Paket portabel (folder aplikasi + runtime Java bawaan) tanpa installer. MSI/EXE butuh WiX Toolset.
+tasks.register<Zip>("packageZip") {
+    group = "compose desktop"
+    description = "Membuat StudyFlow-<versi>-windows.zip dari createDistributable."
+    dependsOn("createDistributable")
+    from(layout.buildDirectory.dir("compose/binaries/main/app"))
+    archiveFileName.set("StudyFlow-0.1.0-${System.getProperty("os.name").substringBefore(' ').lowercase()}.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("dist"))
+}

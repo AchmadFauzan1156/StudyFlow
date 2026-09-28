@@ -104,3 +104,12 @@ Format: keputusan — alasan. Keputusan produk utama mengikuti spesifikasi arsit
 65. **Progres per topik dihitung server dari `answers` + `questions.topic_id`** — soal yang dilaporkan bermasalah dan jawaban kosong tidak dihitung. Topik memakai ID stabil `<note_id>:<slug>` sejak fase 3.
 66. **Rekomendasi rule-based**: minimal 5 jawaban pada topik dan akurasi < 60% → "Perlu latihan". Ambang adalah keputusan produk (dapat diubah lewat `STUDYFLOW_PRACTICE_MIN_ANSWERS` dan `STUDYFLOW_PRACTICE_ACCURACY_THRESHOLD`), bukan ukuran ilmiah penguasaan. Tidak ada training model.
 67. **Flashcard tanpa panggilan AI** — kartu berasal dari soal kuis yang pernah dijawab salah (jawaban benar dan pembahasan sudah terbuka bagi pengguna setelah submission). Penjadwalan memakai Leitner 5 kotak (1/2/4/8/16 hari) di tabel `flashcard_reviews`. Kartu hanya diambil online; progres topik di-cache untuk dibaca offline.
+
+## Fase 6
+
+68. **Satu image Docker untuk API dan worker** (python 3.13-slim + uv 0.12.19, `uv sync --locked --no-dev`, pengguna non-root). Migrasi dijalankan sebagai perintah terpisah (`alembic upgrade head`), bukan otomatis saat API start, agar beberapa replika tidak berebut migrasi.
+69. **`docker-compose.demo.yml` memakai provider demo dan secret JWT demo yang eksplisit** — tidak untuk produksi. Stack ini diverifikasi dengan 5 tes E2E Kotlin.
+70. **Paket desktop portabel (`packageZip`) sebagai jalur utama** — MSI/EXE lewat jpackage membutuhkan WiX Toolset, yang tidak terpasang di mesin pengembangan; tetap tersedia (`packageMsi`) bila WiX dipasang.
+71. **Tanda tangan APK dari `keystore.properties`/environment, tidak pernah dari repo** — tanpa keystore, build release tetap berjalan (unsigned) sehingga CI tidak butuh rahasia.
+72. **gitleaks v8.30.1 dengan allowlist sempit** — hanya folder tes, output build/dependency, dan dua secret demo/E2E yang terdokumentasi. Riwayat git diperiksa bersih; pemindaian awal menemukan 7 positif palsu (semuanya nilai uji).
+73. **CI GitHub Actions** (checkout v7, setup-java v6, setup-uv v10, setup-android v4, setup-gradle v6 — versi rilis terbaru saat dibuat). Perubahan dokumentasi tidak memicu CI untuk menghemat kuota menit repo privat.
