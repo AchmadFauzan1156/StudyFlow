@@ -20,7 +20,7 @@
 | `gradlew :androidApp:assembleRelease` tanpa/dengan keystore uji | `androidApp-release-unsigned.apk`; dengan keystore sekali pakai → `androidApp-release.apk` terverifikasi `apksigner` (keystore dihapus) |
 | `gradlew :desktopApp:packageZip` | `StudyFlow-0.1.0-windows.zip` (±79 MB) |
 | `uv run python scripts/make_demo_pdfs.py` | 4 PDF demo (3 materi + 1 scan kosong) |
-| CI GitHub Actions | Lihat hasil run pertama di bawah |
+| CI GitHub Actions | Run pertama gagal (tag `setup-uv@v10` tidak ada; `gradlew` tanpa izin eksekusi). Setelah diperbaiki, run kedua lulus di ketiga job: gitleaks, backend, dan aplikasi. |
 
 ### Keterbatasan
 - MSI/EXE belum dibuat (butuh WiX Toolset).
