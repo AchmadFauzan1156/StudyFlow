@@ -188,12 +188,13 @@ def test_other_user_cannot_touch_or_see_data(client, auth):
     assert [c["entity"]["name"] for c in alice_changes] == ["Rahasia Alice"]
 
 
-def test_database_roles_cannot_read_business_tables(engine):
+@pytest.mark.parametrize("table", ["courses", "notes", "sync_mutations", "ai_jobs", "question_keys", "attempts"])
+def test_database_roles_cannot_read_business_tables(engine, table):
     with engine.connect() as conn:
         for role in ("anon", "authenticated"):
             conn.execute(text(f"SET ROLE {role}"))
             with pytest.raises(Exception, match="permission denied"):
-                conn.execute(text("SELECT * FROM courses"))
+                conn.execute(text(f"SELECT * FROM {table}"))
             conn.rollback()
             conn.execute(text("RESET ROLE"))
 

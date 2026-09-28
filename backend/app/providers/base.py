@@ -14,7 +14,23 @@ class SourceText:
 
 
 class ProviderUnavailableError(Exception):
-    """Provider tidak dikonfigurasi atau sedang tidak tersedia (dipetakan ke HTTP 503)."""
+    """Provider tidak dikonfigurasi (dipetakan ke HTTP 503 sebelum job dibuat)."""
+
+
+class ProviderTransientError(Exception):
+    """Gangguan sementara (429, timeout, 5xx). Job dijadwalkan ulang, bukan langsung gagal."""
+
+    def __init__(self, message: str, retry_after_seconds: float | None = None) -> None:
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+class ProviderInvalidOutputError(Exception):
+    """Respons tidak bisa diparse atau tidak sesuai schema."""
+
+
+class ProviderRejectedError(Exception):
+    """Permintaan ditolak permanen oleh provider (mis. API key salah, input ditolak)."""
 
 
 class AIProvider(Protocol):

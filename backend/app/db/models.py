@@ -1,11 +1,14 @@
 """Model SQLAlchemy. Skema kanonis dibuat oleh migrasi Alembic (backend/migrations)."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
+    Date,
     DateTime,
+    ForeignKey,
     ForeignKeyConstraint,
     Integer,
     String,
@@ -109,4 +112,147 @@ class SyncMutation(Base):
     mutation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     payload_hash: Mapped[str] = mapped_column(String(64))
     result: Mapped[dict] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ---------- Fase 3: AI ----------
+
+
+class AIJob(Base):
+    """Pekerjaan AI persisten. Worker mengklaim dengan FOR UPDATE SKIP LOCKED dan lease."""
+
+    __tablename__ = "ai_jobs"
+    __table_args__ = (UniqueConstraint("user_id", "idempotency_key", name="uq_ai_jobs_idempotency"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    type: Mapped[str] = mapped_column(String(16))  # summary | quiz
+    source_type: Mapped[str] = mapped_column(String(16))  # note
+    source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    source_version: Mapped[int] = mapped_column(Integer)
+    params: Mapped[dict] = mapped_column(JSONB)
+    idempotency_key: Mapped[str] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(16))  # queued | running | succeeded | failed
+    attempts: Mapped[int] = mapped_column(Integer, server_default="0")
+    run_after: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    quota_day: Mapped[date] = mapped_column(Date)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    result_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Summary(Base):
+    __tablename__ = "summaries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
+    source_type: Mapped[str] = mapped_column(String(16))
+    source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    source_version: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)
+    model_id: Mapped[str] = mapped_column(String(120))
+    prompt_version: Mapped[str] = mapped_column(String(40))
+    is_demo: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Quiz(Base):
+    __tablename__ = "quizzes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
+    source_type: Mapped[str] = mapped_column(String(16))
+    source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    source_version: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String(200))
+    model_id: Mapped[str] = mapped_column(String(120))
+    prompt_version: Mapped[str] = mapped_column(String(40))
+    is_demo: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Question(Base):
+    """Soal yang boleh dikirim ke klien sebelum dijawab (tanpa kunci)."""
+
+    __tablename__ = "questions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    quiz_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("quizzes.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    topic_id: Mapped[str] = mapped_column(String(120))
+    question: Mapped[str] = mapped_column(Text)
+    options: Mapped[list] = mapped_column(JSONB)
+
+
+class QuestionKey(Base):
+    """Kunci jawaban; hanya dibaca server saat menilai attempt."""
+
+    __tablename__ = "question_keys"
+
+    question_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("questions.id"), primary_key=True)
+    correct_option_id: Mapped[str] = mapped_column(String(16))
+    explanation: Mapped[str] = mapped_column(Text)
+    source_refs: Mapped[list] = mapped_column(JSONB)
+
+
+class Attempt(Base):
+    __tablename__ = "attempts"
+    __table_args__ = (UniqueConstraint("user_id", "idempotency_key", name="uq_attempts_idempotency"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    quiz_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("quizzes.id"), index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(128))
+    score: Mapped[int] = mapped_column(Integer)
+    total: Mapped[int] = mapped_column(Integer)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Answer(Base):
+    __tablename__ = "answers"
+
+    attempt_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("attempts.id"), primary_key=True)
+    question_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("questions.id"), primary_key=True)
+    selected_option_id: Mapped[str | None] = mapped_column(String(16))
+    correct: Mapped[bool] = mapped_column(Boolean)
+
+
+class QuestionReport(Base):
+    """Soal yang ditandai bermasalah oleh pengguna; tidak dihitung dalam progres."""
+
+    __tablename__ = "question_reports"
+
+    question_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("questions.id"), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    reason: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AIUsageDaily(Base):
+    """Kuota harian (UTC). scope = user_id atau 'global' (batas free tier provider)."""
+
+    __tablename__ = "ai_usage_daily"
+
+    scope: Mapped[str] = mapped_column(String(64), primary_key=True)
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    count: Mapped[int] = mapped_column(Integer)
+
+
+class UsageRecord(Base):
+    __tablename__ = "usage_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    operation: Mapped[str] = mapped_column(String(16))
+    model_id: Mapped[str] = mapped_column(String(120))
+    input_units: Mapped[int | None] = mapped_column(Integer)
+    output_units: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
