@@ -117,6 +117,8 @@ kotlin {
         jvmTest.dependencies {
             // viewModelScope memakai Dispatchers.Main; di JVM disediakan coroutines-swing.
             implementation(libs.kotlinx.coroutines.swing)
+            implementation(compose.desktop.currentOs)
+            implementation(libs.compose.ui.test)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

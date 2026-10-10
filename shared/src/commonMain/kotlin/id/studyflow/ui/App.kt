@@ -62,6 +62,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -162,7 +163,7 @@ fun App() {
             if (maxWidth >= WIDE_LAYOUT_MIN_DP.dp) {
                 Row(Modifier.fillMaxSize()) {
                     PermanentDrawerSheet(
-                        modifier = Modifier.width(272.dp).fillMaxHeight(),
+                        modifier = Modifier.width(272.dp).fillMaxHeight().testTag("sidebar"),
                         drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     ) {
                         Row(
@@ -246,7 +247,7 @@ fun App() {
             } else {
                 Scaffold(
                     bottomBar = {
-                        NavigationBar {
+                        NavigationBar(Modifier.testTag("bottomBar")) {
                             topLevels.forEachIndexed { index, item ->
                                 NavigationBarItem(
                                     selected = index == selectedIndex,
