@@ -16,10 +16,9 @@ Spesifikasi dan rencana: `docs/superpowers/specs/2026-10-11-quality-and-free-dep
 | `gradlew ktlintCheck :shared:jvmTest :androidApp:assembleDebug :desktopApp:jar` | Berhasil; 69 tes lulus |
 | `uv run ruff check .` dan `uv run pytest` (tanpa database) | Bersih; tes unit lulus, tes integrasi dilewati |
 | `:desktopApp:run`, lalu jendela ditutup | Jendela terbuka dan tertutup tanpa exception |
+| `uv run pytest` dengan PostgreSQL (pgvector) lokal | Semua lulus, termasuk tes integrasi mode worker tertanam |
+| `docker build` + `docker run ... /app/start.sh` dengan `PORT=10000`, worker tertanam, provider demo | Migrasi 0001–0004 berjalan, API listen di 10000; lewat Playwright: push sinkronisasi `applied`, job rangkuman `succeeded` tanpa proses worker terpisah, hasil berlabel `[Demo`, pull mengembalikan 2 perubahan |
 | Playwright terhadap `uvicorn` lokal di port 10000, mode tertanam tanpa database | `/health` 200 (`status: ok`); worker tertanam tidak jalan dan dicatat di log, API tetap hidup; Swagger `/docs` memuat 28 endpoint tanpa error; token tidak valid → 401 format error standar |
-
-### Keterbatasan
-- Docker Desktop tidak terpasang di mesin ini, sehingga tes integrasi PostgreSQL (termasuk `tests/integration/test_embedded_worker.py`) dan build image Docker belum dijalankan lokal. Keduanya diverifikasi oleh CI dan build Render.
 
 ## Checkpoint 6 — Fase 6: rilis demonstrasi (29 September 2026)
 
