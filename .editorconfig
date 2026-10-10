@@ -1,0 +1,7 @@
+root = true
+
+[*.{kt,kts}]
+max_line_length = 140
+ktlint_code_style = intellij_idea
+# Fungsi @Composable memakai PascalCase sesuai konvensi Compose.
+ktlint_function_naming_ignore_when_annotated_with = Composable
