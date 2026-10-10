@@ -1,6 +1,8 @@
 # Spesifikasi: peningkatan kualitas dan deploy gratis
 
-Tanggal: 11 Oktober 2026. Status: menunggu review pemilik.
+Tanggal: 11 Oktober 2026. Status: disetujui pemilik.
+
+Dokumen dan aplikasi tidak menyebut nama orang atau kata "teman"; penerima disebut "pengguna".
 
 ## Tujuan
 
@@ -11,7 +13,7 @@ StudyFlow (portofolio) dirapikan dan diberi jaring pengaman tes, lalu dibuat bis
 - Lint Kotlin berjalan di CI.
 - Alur utama aplikasi tercakup tes UI otomatis.
 - Alur backend terverifikasi lewat Playwright, baik lokal maupun online.
-- Teman pemilik bisa memasang `.exe` atau APK, mendaftar, lalu memakai akun, sinkronisasi, AI, dan PDF.
+- Pengguna lain bisa memasang `.exe` atau APK, mendaftar, lalu memakai akun, sinkronisasi, AI, dan PDF.
 
 **Batasan**
 - Tanpa biaya. Render, Supabase, dan Gemini memakai paket gratis.
@@ -80,11 +82,11 @@ StudyFlow (portofolio) dirapikan dan diberi jaring pengaman tes, lalu dibuat bis
 - Claude menyalin key antar-dashboard dan meminta konfirmasi sebelum membuat atau menghapus layanan.
 - Panduan langkah untuk pemilik ditulis di `docs/DEPLOYMENT.md` (bagian "Deploy gratis").
 
-## Item 6: installer untuk teman
+## Item 6: installer untuk pengguna
 
 - **Windows:** `:desktopApp:packageExe` (jpackage). Butuh WiX Toolset v3 (gratis), yang dipasang di mesin pemilik setelah izin. URL Supabase dan Render tertanam saat build.
 - **Android:** `:androidApp:assembleRelease` dengan keystore milik pemilik, di luar repo.
-- Kedua berkas dibagikan manual (Drive atau WhatsApp). Panduan instalasi untuk teman, termasuk peringatan SmartScreen dan "Instal aplikasi tidak dikenal", ditulis di `docs/DEMO.md` atau berkas baru `docs/INSTALL.md`.
+- Kedua berkas dibagikan manual (Drive atau WhatsApp). Panduan instalasi untuk pengguna, termasuk peringatan SmartScreen dan "Instal aplikasi tidak dikenal", ditulis di `docs/DEMO.md` atau berkas baru `docs/INSTALL.md`.
 - Verifikasi: pasang `.exe` hasil build di mesin pemilik, daftar akun baru, buat catatan, lalu catatan muncul di perangkat kedua (APK di emulator).
 
 ## Di luar cakupan
