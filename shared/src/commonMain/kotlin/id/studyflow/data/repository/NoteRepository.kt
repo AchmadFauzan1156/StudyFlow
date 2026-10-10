@@ -1,7 +1,7 @@
 package id.studyflow.data.repository
 
-import id.studyflow.data.local.NoteEntity
 import id.studyflow.data.local.DatabaseManager
+import id.studyflow.data.local.NoteEntity
 import id.studyflow.domain.Limits
 import id.studyflow.domain.Note
 import id.studyflow.domain.ValidationException
@@ -13,10 +13,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class NoteRepository(
-    private val databases: DatabaseManager,
-    private val mutations: LocalMutations,
-) {
+class NoteRepository(private val databases: DatabaseManager, private val mutations: LocalMutations) {
     private val noteDao get() = databases.db.noteDao()
 
     fun observeByCourse(courseId: String): Flow<List<Note>> =
@@ -71,7 +68,10 @@ class NoteRepository(
             val now = mutations.now()
             db.noteDao().upsert(current.copy(deletedAt = now, updatedAt = now, pendingSync = true))
             enqueue(
-                EntityType.NOTE, id, Operation.DELETE, current.version,
+                EntityType.NOTE,
+                id,
+                Operation.DELETE,
+                current.version,
                 mutations.json.encodeToString(DeletePayload(now)),
             )
         }
@@ -84,8 +84,7 @@ class NoteRepository(
         return content
     }
 
-    private fun NoteEntity.payload(): String =
-        mutations.json.encodeToString(NotePayload(courseId, title, content))
+    private fun NoteEntity.payload(): String = mutations.json.encodeToString(NotePayload(courseId, title, content))
 }
 
 private fun NoteEntity.toDomain() = Note(

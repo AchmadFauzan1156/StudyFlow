@@ -12,11 +12,7 @@ val ApiJson = Json {
 }
 
 /** Konfigurasi publik server (bukan rahasia). String kosong berarti belum dikonfigurasi. */
-data class ServerConfig(
-    val supabaseUrl: String,
-    val supabasePublishableKey: String,
-    val apiBaseUrl: String,
-) {
+data class ServerConfig(val supabaseUrl: String, val supabasePublishableKey: String, val apiBaseUrl: String) {
     val isConfigured: Boolean
         get() = supabaseUrl.isNotBlank() && supabasePublishableKey.isNotBlank() && apiBaseUrl.isNotBlank()
 }
@@ -53,11 +49,7 @@ internal data class AuthErrorBody(
 // ---------- StudyFlow API ----------
 
 @Serializable
-data class ApiErrorBody(
-    val code: String,
-    val message: String,
-    @SerialName("request_id") val requestId: String? = null,
-)
+data class ApiErrorBody(val code: String, val message: String, @SerialName("request_id") val requestId: String? = null)
 
 @Serializable
 data class MutationDto(
@@ -105,10 +97,7 @@ data class ServerEntity(
 )
 
 @Serializable
-data class ChangeDto(
-    @SerialName("entity_type") val entityType: String,
-    val entity: ServerEntity,
-)
+data class ChangeDto(@SerialName("entity_type") val entityType: String, val entity: ServerEntity)
 
 @Serializable
 data class PullResponseDto(

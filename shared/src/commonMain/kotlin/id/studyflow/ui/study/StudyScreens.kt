@@ -70,7 +70,8 @@ internal fun Label(text: String, container: androidx.compose.ui.graphics.Color, 
 }
 
 @Composable
-internal fun DemoLabel() = Label("Demo, bukan AI", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
+internal fun DemoLabel() =
+    Label("Demo, bukan AI", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
 
 @Composable
 internal fun OfflineNote() = Text(
@@ -117,8 +118,10 @@ fun StudyTab(notes: List<Note>, onOpenNote: (String) -> Unit, onOpenAsk: () -> U
                 ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Tanya materi", style = MaterialTheme.typography.titleSmall)
-                        Text("Ajukan pertanyaan; jawaban diambil dari PDF di tab Materi beserta halaman sumbernya.",
-                            style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "Ajukan pertanyaan; jawaban diambil dari PDF di tab Materi beserta halaman sumbernya.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 }
                 if (notes.isEmpty()) {
@@ -134,7 +137,11 @@ fun StudyTab(notes: List<Note>, onOpenNote: (String) -> Unit, onOpenAsk: () -> U
                         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(note.title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                             if (note.pendingSync) {
-                                Label("Belum tersinkron", MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
+                                Label(
+                                    "Belum tersinkron",
+                                    MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     }
@@ -147,13 +154,7 @@ fun StudyTab(notes: List<Note>, onOpenNote: (String) -> Unit, onOpenAsk: () -> U
 // ---------- Belajar dari satu catatan ----------
 
 @Composable
-fun StudyNoteScreen(
-    noteId: String,
-    zone: TimeZone,
-    onBack: () -> Unit,
-    onOpenSummary: (String) -> Unit,
-    onOpenQuiz: (String) -> Unit,
-) {
+fun StudyNoteScreen(noteId: String, zone: TimeZone, onBack: () -> Unit, onOpenSummary: (String) -> Unit, onOpenQuiz: (String) -> Unit) {
     val viewModel = koinViewModel<StudyNoteViewModel>(key = "study-$noteId") { parametersOf(noteId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     var questionCount by remember { mutableIntStateOf(5) }
@@ -240,7 +241,10 @@ fun StudyNoteScreen(
 @Composable
 private fun JobCard(job: JobDto, onDismiss: () -> Unit) {
     val label = if (job.type == "summary") "Rangkuman" else "Kuis"
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), modifier = Modifier.fillMaxWidth()) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (job.status == "failed") {
                 Column(Modifier.weight(1f)) {
@@ -335,7 +339,11 @@ fun QuizScreen(quizId: String, attemptId: String?, onBack: () -> Unit) {
                     if (quiz.isDemo) DemoLabel()
                     if (quiz.source.outdated) Text("Kuis ini dibuat dari versi catatan lama.", style = MaterialTheme.typography.bodySmall)
                     state.attempt?.let { a ->
-                        Text("Skor: ${a.score}/${a.total}", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+                        Text(
+                            "Skor: ${a.score}/${a.total}",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                     }
                 }
             }
@@ -405,13 +413,23 @@ private fun QuestionCard(
             }
             if (result != null) {
                 Text(
-                    if (result.correct) "Benar" else if (result.selectedOptionId == null) "Tidak dijawab" else "Salah",
+                    if (result.correct) {
+                        "Benar"
+                    } else if (result.selectedOptionId == null) {
+                        "Tidak dijawab"
+                    } else {
+                        "Salah"
+                    },
                     color = if (result.correct) colors.primary else colors.error,
                     style = MaterialTheme.typography.labelLarge,
                 )
                 Text(result.explanation, style = MaterialTheme.typography.bodyMedium)
                 result.sources.forEach { source ->
-                    Text("Sumber: ${source.title ?: "catatan"}", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                    Text(
+                        "Sumber: ${source.title ?: "catatan"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
                 }
                 TextButton(onClick = onReport, enabled = !reported) {
                     Text(if (reported) "Soal sudah dilaporkan" else "Tandai soal bermasalah")
@@ -444,8 +462,10 @@ fun QuizHistorySection(zone: TimeZone, onOpenAttempt: (quizId: String, attemptId
         if (state.attempts.isNotEmpty()) {
             val totalScore = state.attempts.sumOf { it.score }
             val totalQuestions = state.attempts.sumOf { it.total }.coerceAtLeast(1)
-            Text("Rata-rata benar ${totalScore * 100 / totalQuestions}% dari ${state.attempts.size} percobaan",
-                style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "Rata-rata benar ${totalScore * 100 / totalQuestions}% dari ${state.attempts.size} percobaan",
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
         state.attempts.forEach { a ->
             Card(

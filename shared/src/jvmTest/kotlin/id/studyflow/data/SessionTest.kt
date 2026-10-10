@@ -55,18 +55,33 @@ class SessionTest {
             val body = (request.body as? OutgoingContent.ByteArrayContent)?.bytes()?.decodeToString().orEmpty()
             assertEquals("sb_publishable_test", request.headers["apikey"])
             when {
-                request.url.encodedPath.endsWith("/logout") -> { logoutCalls++; respond("", HttpStatusCode.NoContent) }
+                request.url.encodedPath.endsWith("/logout") -> {
+                    logoutCalls++
+                    respond("", HttpStatusCode.NoContent)
+                }
                 request.url.encodedPath.endsWith("/signup") ->
-                    respond("""{"id":"u-new","email":"baru@contoh.id","confirmation_sent_at":"2026-09-28T00:00:00Z"}""", HttpStatusCode.OK, headers)
+                    respond(
+                        """{"id":"u-new","email":"baru@contoh.id","confirmation_sent_at":"2026-09-28T00:00:00Z"}""",
+                        HttpStatusCode.OK,
+                        headers,
+                    )
                 request.url.parameters["grant_type"] == "password" -> when {
-                    "salah" in body -> respond("""{"error":"invalid_grant","error_description":"Invalid login credentials","error_code":"invalid_credentials"}""", HttpStatusCode.BadRequest, headers)
+                    "salah" in body -> respond(
+                        """{"error":"invalid_grant","error_description":"Invalid login credentials","error_code":"invalid_credentials"}""",
+                        HttpStatusCode.BadRequest,
+                        headers,
+                    )
                     "\"alice@" in body -> respond(tokens("alice", "r1"), HttpStatusCode.OK, headers)
                     else -> respond(tokens("bob", "b1", withUser = false), HttpStatusCode.OK, headers)
                 }
                 request.url.parameters["grant_type"] == "refresh_token" -> {
                     refreshRequests += body
                     if ("revoked" in body) {
-                        respond("""{"code":400,"error_code":"refresh_token_not_found","msg":"Invalid Refresh Token"}""", HttpStatusCode.BadRequest, headers)
+                        respond(
+                            """{"code":400,"error_code":"refresh_token_not_found","msg":"Invalid Refresh Token"}""",
+                            HttpStatusCode.BadRequest,
+                            headers,
+                        )
                     } else {
                         respond(tokens("alice", "r2"), HttpStatusCode.OK, headers)
                     }

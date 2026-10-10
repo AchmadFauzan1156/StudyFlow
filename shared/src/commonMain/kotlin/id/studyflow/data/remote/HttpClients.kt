@@ -15,4 +15,3 @@ fun HttpClientConfig<*>.studyFlowDefaults() {
     }
     expectSuccess = false
 }
-

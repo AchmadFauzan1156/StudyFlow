@@ -135,7 +135,10 @@ fun MaterialsTab(courseId: String, onOpenDocument: (String) -> Unit, modifier: M
         ConfirmDeleteDialog(
             title = "Hapus ${doc.title}?",
             message = "Berkas, teks, dan indeks pencarian dokumen ini dihapus dari server.",
-            onConfirm = { viewModel.delete(doc.id); deleting = null },
+            onConfirm = {
+                viewModel.delete(doc.id)
+                deleting = null
+            },
             onDismiss = { deleting = null },
         )
     }
@@ -150,8 +153,13 @@ private fun DocumentCard(doc: DocumentDto, onClick: () -> Unit, onDelete: () -> 
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(doc.title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f),
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    doc.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 when (doc.status) {
                     "ready" -> Label("Siap", colors.primaryContainer, colors.onPrimaryContainer)
                     "queued", "processing" -> Label("Diproses…", colors.secondaryContainer, colors.onSecondaryContainer)
@@ -159,8 +167,11 @@ private fun DocumentCard(doc: DocumentDto, onClick: () -> Unit, onDelete: () -> 
                     else -> Label("Gagal", colors.errorContainer, colors.onErrorContainer)
                 }
             }
-            Text("${doc.pageCount} halaman · ${doc.sizeBytes / 1024} KB", style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant)
+            Text(
+                "${doc.pageCount} halaman · ${doc.sizeBytes / 1024} KB",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
             if (doc.status == "unsupported" || doc.status == "failed") {
                 Text(documentErrorMessage(doc.errorCode), style = MaterialTheme.typography.bodySmall, color = colors.error)
             }
@@ -203,8 +214,11 @@ fun DocumentScreen(documentId: String, onBack: () -> Unit) {
             items(state.pages, key = { it.pageNumber }) { page ->
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                     Column(Modifier.padding(16.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Halaman ${page.pageNumber}", style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary)
+                        Text(
+                            "Halaman ${page.pageNumber}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                         Text(page.text.ifBlank { "(tidak ada teks terbaca)" }, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -219,7 +233,10 @@ fun DocumentScreen(documentId: String, onBack: () -> Unit) {
         ConfirmDeleteDialog(
             title = "Hapus materi ini?",
             message = "Berkas, teks, dan indeks pencarian dokumen ini dihapus dari server.",
-            onConfirm = { confirmDelete = false; viewModel.delete() },
+            onConfirm = {
+                confirmDelete = false
+                viewModel.delete()
+            },
             onDismiss = { confirmDelete = false },
         )
     }
@@ -338,8 +355,13 @@ private fun MessageBubble(message: MessageDto, onOpenSource: (String) -> Unit) {
 private fun SourceChip(source: SourceDto, onOpenSource: (String) -> Unit) {
     AssistChip(
         onClick = { onOpenSource(source.chunkId) },
-        label = { Text("${source.documentTitle} · ${pageLabel(source.pageStart, source.pageEnd)}", maxLines = 1,
-            overflow = TextOverflow.Ellipsis) },
+        label = {
+            Text(
+                "${source.documentTitle} · ${pageLabel(source.pageStart, source.pageEnd)}",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
     )
 }
 

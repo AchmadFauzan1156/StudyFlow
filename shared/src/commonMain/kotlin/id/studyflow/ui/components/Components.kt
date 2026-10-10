@@ -32,9 +32,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -137,12 +137,7 @@ fun InfoCard(title: String, message: String, modifier: Modifier = Modifier, icon
 }
 
 @Composable
-fun ConfirmDeleteDialog(
-    title: String,
-    message: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
+fun ConfirmDeleteDialog(title: String, message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -209,44 +204,39 @@ fun TaskRow(
             }
         },
     ) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().pointerHoverIcon(PointerIcon.Hand),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Row(
-            Modifier.padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Card(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth().pointerHoverIcon(PointerIcon.Hand),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         ) {
-            Checkbox(checked = done, onCheckedChange = { onToggleDone() })
-            Column(Modifier.weight(1f).padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    task.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textDecoration = if (done) TextDecoration.LineThrough else null,
-                    color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
-                )
-                val subtitle = buildString {
-                    if (showCourse && task.courseName != null) append(task.courseName).append(" · ")
-                    append(formatDateTime(task.dueAt, zone))
+            Row(
+                Modifier.padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = done, onCheckedChange = { onToggleDone() })
+                Column(Modifier.weight(1f).padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        task.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textDecoration = if (done) TextDecoration.LineThrough else null,
+                        color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
+                    )
+                    val subtitle = buildString {
+                        if (showCourse && task.courseName != null) append(task.courseName).append(" · ")
+                        append(formatDateTime(task.dueAt, zone))
+                    }
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                DeadlineBadge(status)
             }
-            DeadlineBadge(status)
         }
-    }
     }
 }
 
 @Composable
-fun StatTile(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    accent: Color = MaterialTheme.colorScheme.primary,
-) {
+fun StatTile(label: String, value: String, modifier: Modifier = Modifier, accent: Color = MaterialTheme.colorScheme.primary) {
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),

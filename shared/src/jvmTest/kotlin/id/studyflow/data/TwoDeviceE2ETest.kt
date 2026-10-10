@@ -1,15 +1,15 @@
 package id.studyflow.data
 
+import id.studyflow.data.ai.AiException
+import id.studyflow.data.ai.NoteReadiness
 import id.studyflow.data.remote.AccessTokenProvider
 import id.studyflow.data.repository.EntityType
 import id.studyflow.data.repository.TaskInput
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.plugin
-import kotlinx.coroutines.flow.first
-import id.studyflow.data.ai.AiException
-import id.studyflow.data.ai.NoteReadiness
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException

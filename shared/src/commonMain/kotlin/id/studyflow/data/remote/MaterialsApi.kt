@@ -87,13 +87,12 @@ private data class AskRequest(val content: String)
 
 /** Dokumen PDF dan tanya materi (fase 4). */
 class MaterialsApi(private val api: ApiCaller) {
-    suspend fun documents(courseId: String): List<DocumentDto> =
-        api.call(ListSerializer(DocumentDto.serializer())) { token ->
-            get(api.url("/v1/documents")) {
-                authorize(token)
-                parameter("course_id", courseId)
-            }
+    suspend fun documents(courseId: String): List<DocumentDto> = api.call(ListSerializer(DocumentDto.serializer())) { token ->
+        get(api.url("/v1/documents")) {
+            authorize(token)
+            parameter("course_id", courseId)
         }
+    }
 
     suspend fun document(id: String): DocumentDto = api.call(DocumentDto.serializer()) { token ->
         get(api.url("/v1/documents/$id")) { authorize(token) }
@@ -107,7 +106,8 @@ class MaterialsApi(private val api: ApiCaller) {
                     append("course_id", courseId)
                     append("title", title)
                     append(
-                        "file", bytes,
+                        "file",
+                        bytes,
                         Headers.build {
                             append(HttpHeaders.ContentType, "application/pdf")
                             append(HttpHeaders.ContentDisposition, "filename=\"${fileName.replace("\"", "")}\"")
@@ -120,14 +120,13 @@ class MaterialsApi(private val api: ApiCaller) {
             }
         }
 
-    suspend fun pages(documentId: String, start: Int, count: Int): List<PageDto> =
-        api.call(ListSerializer(PageDto.serializer())) { token ->
-            get(api.url("/v1/documents/$documentId/pages")) {
-                authorize(token)
-                parameter("start", start)
-                parameter("count", count)
-            }
+    suspend fun pages(documentId: String, start: Int, count: Int): List<PageDto> = api.call(ListSerializer(PageDto.serializer())) { token ->
+        get(api.url("/v1/documents/$documentId/pages")) {
+            authorize(token)
+            parameter("start", start)
+            parameter("count", count)
         }
+    }
 
     suspend fun download(documentId: String): ByteArray =
         api.send { token -> get(api.url("/v1/documents/$documentId/download")) { authorize(token) } }.readRawBytes()
@@ -148,18 +147,16 @@ class MaterialsApi(private val api: ApiCaller) {
         }
     }
 
-    suspend fun ask(threadId: String, question: String, idempotencyKey: String): MessageDto =
-        api.call(MessageDto.serializer()) { token ->
-            post(api.url("/v1/chat/threads/$threadId/messages")) {
-                authorize(token)
-                header("Idempotency-Key", idempotencyKey)
-                contentType(ContentType.Application.Json)
-                setBody(AskRequest(question))
-            }
+    suspend fun ask(threadId: String, question: String, idempotencyKey: String): MessageDto = api.call(MessageDto.serializer()) { token ->
+        post(api.url("/v1/chat/threads/$threadId/messages")) {
+            authorize(token)
+            header("Idempotency-Key", idempotencyKey)
+            contentType(ContentType.Application.Json)
+            setBody(AskRequest(question))
         }
+    }
 
-    suspend fun messages(threadId: String): List<MessageDto> =
-        api.call(ListSerializer(MessageDto.serializer())) { token ->
-            get(api.url("/v1/chat/threads/$threadId/messages")) { authorize(token) }
-        }
+    suspend fun messages(threadId: String): List<MessageDto> = api.call(ListSerializer(MessageDto.serializer())) { token ->
+        get(api.url("/v1/chat/threads/$threadId/messages")) { authorize(token) }
+    }
 }

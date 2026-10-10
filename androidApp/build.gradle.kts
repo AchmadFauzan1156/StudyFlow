@@ -11,8 +11,7 @@ val keystoreProps = Properties().apply {
     rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
 
-fun signingValue(key: String, env: String): String? =
-    providers.environmentVariable(env).orNull ?: keystoreProps.getProperty(key)
+fun signingValue(key: String, env: String): String? = providers.environmentVariable(env).orNull ?: keystoreProps.getProperty(key)
 
 android {
     namespace = "id.studyflow.android"

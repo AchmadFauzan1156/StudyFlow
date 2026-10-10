@@ -19,18 +19,14 @@ import kotlin.uuid.Uuid
  * sama tidak menggandakan data, sedangkan akun berbeda mendapat ID berbeda (ID entity unik global
  * di server). Data mode lokal tidak dihapus.
  */
-class LocalImport(
-    private val databases: DatabaseManager,
-    private val mutations: LocalMutations,
-) {
+class LocalImport(private val databases: DatabaseManager, private val mutations: LocalMutations) {
     suspend fun localCourseCount(): Int = databases.local.syncDao().activeCourseCount()
 
     /** true jika tawaran impor untuk akun ini belum pernah ditampilkan. */
     suspend fun shouldOffer(userId: String): Boolean =
         localCourseCount() > 0 && databases.local.settingsDao().get(promptKey(userId)) == null
 
-    suspend fun markOffered(userId: String) =
-        databases.local.settingsDao().put(SettingEntity(promptKey(userId), "1"))
+    suspend fun markOffered(userId: String) = databases.local.settingsDao().put(SettingEntity(promptKey(userId), "1"))
 
     /** Mengembalikan jumlah mata kuliah yang baru ditambahkan. */
     suspend fun importInto(userId: String): Int {
@@ -63,7 +59,10 @@ class LocalImport(
                 if (db.taskDao().getById(id) != null || db.courseDao().getById(courseId) == null) continue
                 db.taskDao().upsert(t.copy(id = id, courseId = courseId, version = 0, pendingSync = true, updatedAt = now))
                 enqueue(
-                    EntityType.TASK, id, Operation.CREATE, 0,
+                    EntityType.TASK,
+                    id,
+                    Operation.CREATE,
+                    0,
                     json.encodeToString(TaskPayload(courseId, t.title, t.description, t.dueAt, t.timeZoneId, t.status)),
                 )
             }

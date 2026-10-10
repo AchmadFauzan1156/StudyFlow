@@ -176,7 +176,9 @@ fun TaskEditorScreen(courseId: String, taskId: String?, onDone: () -> Unit) {
             TopAppBar(
                 title = { Text(if (state.isNew) "Tugas baru" else "Ubah tugas") },
                 navigationIcon = {
-                    IconButton(onClick = onDone) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali tanpa menyimpan") }
+                    IconButton(onClick = onDone) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali tanpa menyimpan")
+                    }
                 },
                 actions = {
                     if (!state.isNew) {
@@ -287,7 +289,10 @@ fun TaskEditorScreen(courseId: String, taskId: String?, onDone: () -> Unit) {
         ConfirmDeleteDialog(
             title = "Hapus tugas?",
             message = "Tugas ini akan dihapus dari mata kuliah.",
-            onConfirm = { confirmDelete = false; viewModel.delete(onDone) },
+            onConfirm = {
+                confirmDelete = false
+                viewModel.delete(onDone)
+            },
             onDismiss = { confirmDelete = false },
         )
     }

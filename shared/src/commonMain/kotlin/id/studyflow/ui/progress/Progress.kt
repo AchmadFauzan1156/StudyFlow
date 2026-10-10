@@ -31,14 +31,14 @@ import id.studyflow.data.repository.TaskRepository
 import id.studyflow.domain.DeadlineStatus
 import id.studyflow.domain.TaskStatus
 import id.studyflow.domain.deadlineStatus
+import id.studyflow.ui.components.StatTile
 import id.studyflow.ui.study.QuizHistorySection
 import id.studyflow.ui.study.TopicsSection
-import org.koin.compose.koinInject
-import id.studyflow.ui.components.StatTile
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 data class ProgressUiState(
@@ -49,12 +49,7 @@ data class ProgressUiState(
     val overdue: Int = 0,
 )
 
-class ProgressViewModel(
-    courses: CourseRepository,
-    notes: NoteRepository,
-    tasks: TaskRepository,
-    clock: AppClock,
-) : ViewModel() {
+class ProgressViewModel(courses: CourseRepository, notes: NoteRepository, tasks: TaskRepository, clock: AppClock) : ViewModel() {
     val state: StateFlow<ProgressUiState> = combine(
         courses.observeCount(),
         notes.observeCount(),

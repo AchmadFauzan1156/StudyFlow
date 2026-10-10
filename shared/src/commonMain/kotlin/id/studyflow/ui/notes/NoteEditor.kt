@@ -50,11 +50,8 @@ data class NoteEditorUiState(
     val error: String? = null,
 )
 
-class NoteEditorViewModel(
-    private val courseId: String,
-    private val noteId: String?,
-    private val repository: NoteRepository,
-) : ViewModel() {
+class NoteEditorViewModel(private val courseId: String, private val noteId: String?, private val repository: NoteRepository) :
+    ViewModel() {
     private val _state = MutableStateFlow(NoteEditorUiState(isNew = noteId == null, loading = noteId != null))
     val state: StateFlow<NoteEditorUiState> = _state.asStateFlow()
 
@@ -63,8 +60,11 @@ class NoteEditorViewModel(
             viewModelScope.launch {
                 val note = repository.get(noteId)
                 _state.update {
-                    if (note == null) it.copy(loading = false, error = "Catatan tidak ditemukan")
-                    else it.copy(loading = false, title = note.title, content = note.content)
+                    if (note == null) {
+                        it.copy(loading = false, error = "Catatan tidak ditemukan")
+                    } else {
+                        it.copy(loading = false, title = note.title, content = note.content)
+                    }
                 }
             }
         }
@@ -84,8 +84,11 @@ class NoteEditorViewModel(
         _state.update { it.copy(saving = true) }
         viewModelScope.launch {
             runCatching {
-                if (noteId == null) repository.create(courseId, current.title, current.content)
-                else repository.update(noteId, current.title, current.content)
+                if (noteId == null) {
+                    repository.create(courseId, current.title, current.content)
+                } else {
+                    repository.update(noteId, current.title, current.content)
+                }
             }.onSuccess { onDone() }
                 .onFailure { e -> _state.update { it.copy(saving = false, error = e.message ?: "Gagal menyimpan") } }
         }
@@ -112,7 +115,9 @@ fun NoteEditorScreen(courseId: String, noteId: String?, onDone: () -> Unit) {
             TopAppBar(
                 title = { Text(if (state.isNew) "Catatan baru" else "Ubah catatan") },
                 navigationIcon = {
-                    IconButton(onClick = onDone) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali tanpa menyimpan") }
+                    IconButton(onClick = onDone) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali tanpa menyimpan")
+                    }
                 },
                 actions = {
                     if (!state.isNew) {
@@ -157,7 +162,10 @@ fun NoteEditorScreen(courseId: String, noteId: String?, onDone: () -> Unit) {
         ConfirmDeleteDialog(
             title = "Hapus catatan?",
             message = "Catatan ini akan dihapus dari mata kuliah.",
-            onConfirm = { confirmDelete = false; viewModel.delete(onDone) },
+            onConfirm = {
+                confirmDelete = false
+                viewModel.delete(onDone)
+            },
             onDismiss = { confirmDelete = false },
         )
     }

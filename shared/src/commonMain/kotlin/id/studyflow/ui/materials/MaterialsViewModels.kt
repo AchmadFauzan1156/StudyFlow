@@ -66,6 +66,7 @@ class MaterialsViewModel(
     private val _state = MutableStateFlow(MaterialsUiState())
     val state: StateFlow<MaterialsUiState> = _state.asStateFlow()
     private var polling: Job? = null
+
     // Key per berkas terpilih, dipertahankan untuk retry agar unggahan tidak berganda.
     private var pendingUpload: Pair<PickedFile, String>? = null
 
@@ -256,11 +257,7 @@ data class AskUiState(
         get() = messages.any { m -> m.role == "user" && (m.jobStatus == "queued" || m.jobStatus == "running") }
 }
 
-class AskViewModel(
-    private val courseId: String,
-    private val ai: AiRepository,
-    private val ids: IdGenerator,
-) : ViewModel() {
+class AskViewModel(private val courseId: String, private val ai: AiRepository, private val ids: IdGenerator) : ViewModel() {
     private val _state = MutableStateFlow(AskUiState())
     val state: StateFlow<AskUiState> = _state.asStateFlow()
     private var polling: Job? = null
@@ -345,8 +342,7 @@ class AskViewModel(
 
 // ---------- Cuplikan sumber ----------
 
-data class SourceUiState(val chunk: ChunkDto? = null, val offline: Boolean = false, val busy: Boolean = false,
-                         val message: String? = null)
+data class SourceUiState(val chunk: ChunkDto? = null, val offline: Boolean = false, val busy: Boolean = false, val message: String? = null)
 
 class SourceViewModel(private val chunkId: String, private val ai: AiRepository) : ViewModel() {
     private val _state = MutableStateFlow(SourceUiState())
@@ -370,7 +366,14 @@ class SourceViewModel(private val chunkId: String, private val ai: AiRepository)
             try {
                 val opened = open(ai.download(chunk.documentId), chunk.documentTitle)
                 _state.update {
-                    it.copy(busy = false, message = if (opened) "Buka halaman ${chunk.pageStart} di penampil PDF." else "Tidak ada aplikasi untuk membuka PDF.")
+                    it.copy(
+                        busy = false,
+                        message = if (opened) {
+                            "Buka halaman ${chunk.pageStart} di penampil PDF."
+                        } else {
+                            "Tidak ada aplikasi untuk membuka PDF."
+                        },
+                    )
                 }
             } catch (e: AiException) {
                 _state.update { it.copy(busy = false, message = e.message) }

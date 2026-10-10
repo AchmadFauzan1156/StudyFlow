@@ -155,8 +155,13 @@ class FlashcardsViewModel(private val ai: AiRepository) : ViewModel() {
             try {
                 ai.review(card.questionId, remembered)
                 _state.update {
-                    it.copy(busy = false, index = it.index + 1, revealed = false, reviewed = it.reviewed + 1,
-                        remaining = (it.remaining - 1).coerceAtLeast(0))
+                    it.copy(
+                        busy = false,
+                        index = it.index + 1,
+                        revealed = false,
+                        reviewed = it.reviewed + 1,
+                        remaining = (it.remaining - 1).coerceAtLeast(0),
+                    )
                 }
             } catch (e: AiException) {
                 _state.update { it.copy(busy = false, error = e.message) }
@@ -180,14 +185,20 @@ fun FlashcardsScreen(onBack: () -> Unit) {
             if (card == null) {
                 EmptyState(
                     if (state.reviewed > 0) "Selesai untuk sekarang" else "Tidak ada kartu jatuh tempo",
-                    if (state.remaining > 0) "Masih ada ${state.remaining} kartu; muat lagi untuk melanjutkan."
-                    else "Kartu dibuat dari soal kuis yang pernah dijawab salah, lalu dijadwalkan ulang 1–16 hari.",
+                    if (state.remaining > 0) {
+                        "Masih ada ${state.remaining} kartu; muat lagi untuk melanjutkan."
+                    } else {
+                        "Kartu dibuat dari soal kuis yang pernah dijawab salah, lalu dijadwalkan ulang 1–16 hari."
+                    },
                     action = if (state.remaining > 0) ({ Button(onClick = viewModel::load) { Text("Muat lagi") } }) else null,
                 )
                 return@Column
             }
-            Text("Sisa ${state.remaining} kartu · kotak ${card.box}/5 · ${card.topicLabel}",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "Sisa ${state.remaining} kartu · kotak ${card.box}/5 · ${card.topicLabel}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Column(Modifier.padding(16.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(card.question, style = MaterialTheme.typography.titleMedium)
@@ -195,7 +206,11 @@ fun FlashcardsScreen(onBack: () -> Unit) {
                         Text(card.answer, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
                         Text(card.explanation, style = MaterialTheme.typography.bodyMedium)
                         card.noteTitle?.let {
-                            Text("Sumber: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "Sumber: $it",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }

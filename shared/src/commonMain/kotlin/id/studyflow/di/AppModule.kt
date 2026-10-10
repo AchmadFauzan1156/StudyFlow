@@ -4,9 +4,9 @@ import id.studyflow.data.AppClock
 import id.studyflow.data.IdGenerator
 import id.studyflow.data.SystemAppClock
 import id.studyflow.data.UuidGenerator
+import id.studyflow.data.ai.AiRepository
 import id.studyflow.data.auth.SessionManager
 import id.studyflow.data.local.DatabaseManager
-import id.studyflow.data.ai.AiRepository
 import id.studyflow.data.remote.AiApi
 import id.studyflow.data.remote.ApiCaller
 import id.studyflow.data.remote.AuthApi
@@ -37,10 +37,10 @@ import id.studyflow.ui.progress.ProgressViewModel
 import id.studyflow.ui.settings.SettingsViewModel
 import id.studyflow.ui.study.FlashcardsViewModel
 import id.studyflow.ui.study.QuizHistoryViewModel
-import id.studyflow.ui.study.TopicsViewModel
 import id.studyflow.ui.study.QuizViewModel
 import id.studyflow.ui.study.StudyNoteViewModel
 import id.studyflow.ui.study.SummaryViewModel
+import id.studyflow.ui.study.TopicsViewModel
 import id.studyflow.ui.tasks.TaskEditorViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

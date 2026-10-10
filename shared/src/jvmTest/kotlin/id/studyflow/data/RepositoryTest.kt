@@ -28,8 +28,7 @@ class RepositoryTest {
 
     private fun inMemoryDb() = buildDatabase(Room.inMemoryDatabaseBuilder<StudyFlowDatabase>()).also { openDbs += it }
 
-    private fun fileDb(file: File) =
-        buildDatabase(Room.databaseBuilder<StudyFlowDatabase>(name = file.absolutePath)).also { openDbs += it }
+    private fun fileDb(file: File) = buildDatabase(Room.databaseBuilder<StudyFlowDatabase>(name = file.absolutePath)).also { openDbs += it }
 
     private class Repos(val db: StudyFlowDatabase, clock: AppClock, ids: IdGenerator = UuidGenerator) {
         val databases = DatabaseManager { db }

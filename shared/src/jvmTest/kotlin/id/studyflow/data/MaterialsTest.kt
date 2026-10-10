@@ -9,9 +9,9 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
+import io.ktor.utils.io.readBuffer
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.IOException
-import io.ktor.utils.io.readBuffer
 import kotlinx.io.readByteArray
 import kotlin.test.AfterTest
 import kotlin.test.Test

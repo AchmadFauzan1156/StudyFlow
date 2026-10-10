@@ -17,12 +17,7 @@ const val DUE_SOON_DAYS = 3
  * (zona yang sedang dipakai pengguna), bukan zona saat deadline dibuat.
  */
 @OptIn(ExperimentalTime::class)
-fun deadlineStatus(
-    dueAt: Long,
-    status: TaskStatus,
-    nowMillis: Long,
-    displayZone: TimeZone,
-): DeadlineStatus {
+fun deadlineStatus(dueAt: Long, status: TaskStatus, nowMillis: Long, displayZone: TimeZone): DeadlineStatus {
     if (status == TaskStatus.DONE) return DeadlineStatus.DONE
     if (dueAt < nowMillis) return DeadlineStatus.OVERDUE
     val today = Instant.fromEpochMilliseconds(nowMillis).toLocalDateTime(displayZone).date
@@ -36,12 +31,10 @@ fun deadlineStatus(
 }
 
 @OptIn(ExperimentalTime::class)
-fun toEpochMillis(dateTime: LocalDateTime, zone: TimeZone): Long =
-    dateTime.toInstant(zone).toEpochMilliseconds()
+fun toEpochMillis(dateTime: LocalDateTime, zone: TimeZone): Long = dateTime.toInstant(zone).toEpochMilliseconds()
 
 @OptIn(ExperimentalTime::class)
-fun toLocalDateTime(epochMillis: Long, zone: TimeZone): LocalDateTime =
-    Instant.fromEpochMilliseconds(epochMillis).toLocalDateTime(zone)
+fun toLocalDateTime(epochMillis: Long, zone: TimeZone): LocalDateTime = Instant.fromEpochMilliseconds(epochMillis).toLocalDateTime(zone)
 
 private val dayNames = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")
 private val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
@@ -52,8 +45,6 @@ fun formatDateTime(epochMillis: Long, zone: TimeZone): String {
     return "${formatDate(dt)} · ${formatTime(dt.hour, dt.minute)}"
 }
 
-fun formatDate(dt: LocalDateTime): String =
-    "${dayNames[dt.dayOfWeek.ordinal]}, ${dt.day} ${monthNames[dt.month.ordinal]} ${dt.year}"
+fun formatDate(dt: LocalDateTime): String = "${dayNames[dt.dayOfWeek.ordinal]}, ${dt.day} ${monthNames[dt.month.ordinal]} ${dt.year}"
 
-fun formatTime(hour: Int, minute: Int): String =
-    "${hour.toString().padStart(2, '0')}.${minute.toString().padStart(2, '0')}"
+fun formatTime(hour: Int, minute: Int): String = "${hour.toString().padStart(2, '0')}.${minute.toString().padStart(2, '0')}"

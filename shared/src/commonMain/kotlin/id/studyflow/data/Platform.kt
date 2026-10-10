@@ -17,8 +17,7 @@ object SystemAppClock : AppClock {
     override fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
     /** Zona perangkat; jika tidak dapat ditentukan, default Asia/Jakarta sesuai spesifikasi. */
-    override fun currentZone(): TimeZone =
-        runCatching { TimeZone.currentSystemDefault() }.getOrElse { TimeZone.of("Asia/Jakarta") }
+    override fun currentZone(): TimeZone = runCatching { TimeZone.currentSystemDefault() }.getOrElse { TimeZone.of("Asia/Jakarta") }
 }
 
 fun interface IdGenerator {

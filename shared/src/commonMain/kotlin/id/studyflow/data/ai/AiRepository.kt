@@ -57,8 +57,7 @@ class AiRepository(
     suspend fun documents(courseId: String): Loaded<List<DocumentDto>> =
         cached("documents:$courseId", ListSerializer(DocumentDto.serializer())) { materials.documents(courseId) }
 
-    suspend fun document(id: String): Loaded<DocumentDto> =
-        cached("document:$id", DocumentDto.serializer()) { materials.document(id) }
+    suspend fun document(id: String): Loaded<DocumentDto> = cached("document:$id", DocumentDto.serializer()) { materials.document(id) }
 
     suspend fun pages(documentId: String, start: Int, count: Int): Loaded<List<PageDto>> =
         cached("pages:$documentId:$start:$count", ListSerializer(PageDto.serializer())) {
@@ -76,8 +75,7 @@ class AiRepository(
 
     suspend fun deleteDocument(documentId: String) = guard { materials.delete(documentId) }
 
-    suspend fun chunk(chunkId: String): Loaded<ChunkDto> =
-        cached("chunk:$chunkId", ChunkDto.serializer()) { materials.chunk(chunkId) }
+    suspend fun chunk(chunkId: String): Loaded<ChunkDto> = cached("chunk:$chunkId", ChunkDto.serializer()) { materials.chunk(chunkId) }
 
     // ---------- Tanya materi ----------
 
@@ -136,8 +134,7 @@ class AiRepository(
     suspend fun reportQuestion(questionId: String, reason: String?) = guard { api.reportQuestion(questionId, reason) }
 
     /** Persetujuan pengiriman materi ke provider, disimpan per akun dan per provider. */
-    suspend fun hasConsent(providerLabel: String): Boolean =
-        databases.db.settingsDao().get(consentKey(providerLabel)) != null
+    suspend fun hasConsent(providerLabel: String): Boolean = databases.db.settingsDao().get(consentKey(providerLabel)) != null
 
     suspend fun giveConsent(providerLabel: String) =
         databases.db.settingsDao().put(SettingEntity(consentKey(providerLabel), clock.nowMillis().toString()))
@@ -149,17 +146,16 @@ class AiRepository(
         const val MAX_UPLOAD_BYTES = 10 * 1024 * 1024
     }
 
-    private suspend fun <T> cached(key: String, serializer: KSerializer<T>, fetch: suspend () -> T): Loaded<T> =
-        try {
-            val value = guard { fetch() }
-            store(key, serializer, value)
-            Loaded(value, fromCache = false)
-        } catch (e: AiException) {
-            val cachedEntry = databases.db.cacheDao().get(key) ?: throw e
-            // Server menolak akses (mis. data dihapus): jangan tampilkan salinan lama.
-            if (e.code == "not_found") throw e
-            Loaded(ApiJson.decodeFromString(serializer, cachedEntry.json), fromCache = true)
-        }
+    private suspend fun <T> cached(key: String, serializer: KSerializer<T>, fetch: suspend () -> T): Loaded<T> = try {
+        val value = guard { fetch() }
+        store(key, serializer, value)
+        Loaded(value, fromCache = false)
+    } catch (e: AiException) {
+        val cachedEntry = databases.db.cacheDao().get(key) ?: throw e
+        // Server menolak akses (mis. data dihapus): jangan tampilkan salinan lama.
+        if (e.code == "not_found") throw e
+        Loaded(ApiJson.decodeFromString(serializer, cachedEntry.json), fromCache = true)
+    }
 
     private suspend fun <T> store(key: String, serializer: KSerializer<T>, value: T) {
         databases.db.cacheDao().put(RemoteCacheEntity(key, ApiJson.encodeToString(serializer, value), clock.nowMillis()))

@@ -16,7 +16,9 @@ fun testPdf(pages: List<String>): ByteArray {
         val lines = text.chunked(90).map { it.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)") }
         val stream = "BT /F1 11 Tf 14 TL 40 800 Td " + lines.joinToString(" ") { "($it) Tj T*" } + " ET"
         val contentId = add("<< /Length ${stream.length} >>\nstream\n$stream\nendstream")
-        add("<< /Type /Page /Parent $pagesId 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 $fontId 0 R >> >> /Contents $contentId 0 R >>")
+        add(
+            "<< /Type /Page /Parent $pagesId 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 $fontId 0 R >> >> /Contents $contentId 0 R >>",
+        )
     }
     objects[pagesId - 1] = "<< /Type /Pages /Kids [${pageIds.joinToString(" ") { "$it 0 R" }}] /Count ${pageIds.size} >>"
     objects[catalogId - 1] = "<< /Type /Catalog /Pages $pagesId 0 R >>"

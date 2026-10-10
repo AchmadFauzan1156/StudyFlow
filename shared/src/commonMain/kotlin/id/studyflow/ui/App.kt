@@ -3,10 +3,10 @@ package id.studyflow.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,23 +18,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.text.style.TextOverflow
-import id.studyflow.domain.Course
-import id.studyflow.ui.courses.CoursesViewModel
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
@@ -51,21 +43,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.focusable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
@@ -79,11 +76,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import id.studyflow.data.AppClock
+import id.studyflow.domain.Course
 import id.studyflow.ui.account.AuthScreen
 import id.studyflow.ui.account.ConflictsScreen
 import id.studyflow.ui.account.ImportLocalDialog
 import id.studyflow.ui.courses.CourseDetailScreen
 import id.studyflow.ui.courses.CoursesScreen
+import id.studyflow.ui.courses.CoursesViewModel
 import id.studyflow.ui.dashboard.HomeScreen
 import id.studyflow.ui.materials.AskScreen
 import id.studyflow.ui.materials.DocumentScreen
@@ -97,6 +96,7 @@ import id.studyflow.ui.study.StudyNoteScreen
 import id.studyflow.ui.study.SummaryScreen
 import id.studyflow.ui.tasks.TaskEditorScreen
 import id.studyflow.ui.theme.StudyFlowTheme
+import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.reflect.KClass
@@ -116,7 +116,7 @@ private const val HOVER_CLOSE_DELAY_MS = 250L
 /** Posisi "Mata Kuliah" di [topLevels]. */
 private const val COURSES_INDEX = 1
 
-private val shortcutKeys =listOf(Key.One, Key.Two, Key.Three, Key.Four)
+private val shortcutKeys = listOf(Key.One, Key.Two, Key.Three, Key.Four)
 
 /** Lebar minimum (dp) untuk berpindah dari bottom navigation ke sidebar. */
 private const val WIDE_LAYOUT_MIN_DP = 600
@@ -200,43 +200,43 @@ fun App() {
                         topLevels.forEachIndexed { index, item ->
                             val isCourses = index == COURSES_INDEX
                             Column(if (isCourses) Modifier.hoverable(coursesHover) else Modifier) {
-                            NavigationDrawerItem(
-                                label = { Text(item.label, maxLines = 1, softWrap = false) },
-                                icon = { Icon(item.icon, contentDescription = null) },
-                                badge = {
-                                    if (isCourses) {
-                                        Icon(
-                                            if (coursesExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                                            contentDescription = if (coursesExpanded) "Tutup daftar" else "Buka daftar",
-                                            modifier = Modifier.size(18.dp),
+                                NavigationDrawerItem(
+                                    label = { Text(item.label, maxLines = 1, softWrap = false) },
+                                    icon = { Icon(item.icon, contentDescription = null) },
+                                    badge = {
+                                        if (isCourses) {
+                                            Icon(
+                                                if (coursesExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                                contentDescription = if (coursesExpanded) "Tutup daftar" else "Buka daftar",
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        }
+                                    },
+                                    // Saat daftar terbuka, sorotan pindah ke mata kuliah yang sedang dibuka.
+                                    selected = index == selectedIndex && !(isCourses && coursesExpanded && openCourseId != null),
+                                    onClick = {
+                                        lastTopLevel = index
+                                        navController.navigateTopLevel(item.route)
+                                    },
+                                    // Jarak vertikal agar sorotan hover antar menu tidak saling menempel.
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 3.dp),
+                                )
+                                if (isCourses) {
+                                    AnimatedVisibility(coursesExpanded) {
+                                        CourseSubList(
+                                            courses = courses.orEmpty(),
+                                            selectedId = openCourseId,
+                                            onOpen = { id ->
+                                                lastTopLevel = COURSES_INDEX
+                                                navController.navigateTopLevel(CoursesRoute)
+                                                navController.navigate(CourseDetailRoute(id)) {
+                                                    popUpTo(CoursesRoute)
+                                                    launchSingleTop = true
+                                                }
+                                            },
                                         )
                                     }
-                                },
-                                // Saat daftar terbuka, sorotan pindah ke mata kuliah yang sedang dibuka.
-                                selected = index == selectedIndex && !(isCourses && coursesExpanded && openCourseId != null),
-                                onClick = {
-                                    lastTopLevel = index
-                                    navController.navigateTopLevel(item.route)
-                                },
-                                // Jarak vertikal agar sorotan hover antar menu tidak saling menempel.
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 3.dp),
-                            )
-                            if (isCourses) {
-                                AnimatedVisibility(coursesExpanded) {
-                                    CourseSubList(
-                                        courses = courses.orEmpty(),
-                                        selectedId = openCourseId,
-                                        onOpen = { id ->
-                                            lastTopLevel = COURSES_INDEX
-                                            navController.navigateTopLevel(CoursesRoute)
-                                            navController.navigate(CourseDetailRoute(id)) {
-                                                popUpTo(CoursesRoute)
-                                                launchSingleTop = true
-                                            }
-                                        },
-                                    )
                                 }
-                            }
                             }
                         }
                     }
@@ -356,8 +356,12 @@ private fun StudyFlowNavHost(navController: NavHostController, modifier: Modifie
         }
         composable<AskRoute> { entry ->
             val route = entry.toRoute<AskRoute>()
-            AskScreen(route.courseId, route.courseName, onBack = { navController.popBackStack() },
-                onOpenSource = { navController.navigate(SourceRoute(it)) })
+            AskScreen(
+                route.courseId,
+                route.courseName,
+                onBack = { navController.popBackStack() },
+                onOpenSource = { navController.navigate(SourceRoute(it)) },
+            )
         }
         composable<SourceRoute> { entry ->
             SourceScreen(entry.toRoute<SourceRoute>().chunkId, onBack = { navController.popBackStack() })
@@ -392,8 +396,7 @@ private fun StudyFlowNavHost(navController: NavHostController, modifier: Modifie
     }
 }
 
-private fun NavDestination?.isInHierarchy(item: TopLevel): Boolean =
-    this?.hierarchy?.any { it.hasRoute(item.routeClass) } == true
+private fun NavDestination?.isInHierarchy(item: TopLevel): Boolean = this?.hierarchy?.any { it.hasRoute(item.routeClass) } == true
 
 private fun NavHostController.navigateTopLevel(route: Any) {
     navigate(route) {
