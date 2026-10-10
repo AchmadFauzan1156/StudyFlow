@@ -9,6 +9,7 @@ local.properties
 .fleet/
 .vscode/
 out/
+bin/
 captures/
 .externalNativeBuild/
 .cxx/
