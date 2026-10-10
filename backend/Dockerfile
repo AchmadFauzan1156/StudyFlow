@@ -19,6 +19,10 @@ COPY migrations ./migrations
 COPY alembic.ini ./
 RUN uv sync --locked --no-dev
 
+# Mode satu service (Render Free): migrasi lalu API dengan worker tertanam. Lihat docker/start.sh.
+COPY docker/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Jalankan sebagai pengguna non-root.
 RUN useradd --create-home --uid 10001 studyflow && mkdir -p /data && chown studyflow /data
 USER studyflow
@@ -27,5 +31,5 @@ ENV PATH="/app/.venv/bin:$PATH" \
     STUDYFLOW_STORAGE_LOCAL_DIR=/data/storage
 
 EXPOSE 8000
-# API (default). Worker: `python -m app.worker`. Migrasi: `alembic upgrade head`.
+# API (default). Worker: `python -m app.worker`. Migrasi: `alembic upgrade head`. Satu service: `/app/start.sh`.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

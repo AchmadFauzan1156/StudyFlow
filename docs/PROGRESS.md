@@ -1,5 +1,26 @@
 # Progres
 
+## Checkpoint 7 — Kualitas dan persiapan deploy gratis (11 Oktober 2026)
+
+Spesifikasi dan rencana: `docs/superpowers/specs/2026-10-11-quality-and-free-deploy-design.md`, `docs/superpowers/plans/2026-10-11-quality-and-free-deploy.md`.
+
+### Selesai
+- ktlint 14.2.0 (gaya `intellij_idea`) untuk semua modul Kotlin, dijalankan di CI; seluruh kode diformat dalam satu commit tanpa perubahan perilaku.
+- Tes ViewModel (mata kuliah, beranda, editor tugas) dan Compose UI test (alur mata kuliah → catatan → tugas → selesai, sidebar ≥ 600 dp vs bottom bar, Ctrl+1..4).
+- Refactor tanpa perubahan perilaku: `App.kt` dipecah ke `ui/navigation/`; layar Belajar dan Materi satu file per layar/ViewModel.
+- Backend: `STUDYFLOW_EMBEDDED_WORKER=true` menjalankan worker sebagai thread di proses API (hosting satu service). `backend/docker/start.sh` (migrasi lalu API di `$PORT`) dan blueprint `render.yaml`.
+
+### Perintah dan hasil
+| Perintah | Hasil |
+|---|---|
+| `gradlew ktlintCheck :shared:jvmTest :androidApp:assembleDebug :desktopApp:jar` | Berhasil; 69 tes lulus |
+| `uv run ruff check .` dan `uv run pytest` (tanpa database) | Bersih; tes unit lulus, tes integrasi dilewati |
+| `:desktopApp:run`, lalu jendela ditutup | Jendela terbuka dan tertutup tanpa exception |
+| Playwright terhadap `uvicorn` lokal di port 10000, mode tertanam tanpa database | `/health` 200 (`status: ok`); worker tertanam tidak jalan dan dicatat di log, API tetap hidup; Swagger `/docs` memuat 28 endpoint tanpa error; token tidak valid → 401 format error standar |
+
+### Keterbatasan
+- Docker Desktop tidak terpasang di mesin ini, sehingga tes integrasi PostgreSQL (termasuk `tests/integration/test_embedded_worker.py`) dan build image Docker belum dijalankan lokal. Keduanya diverifikasi oleh CI dan build Render.
+
 ## Checkpoint 6 — Fase 6: rilis demonstrasi (29 September 2026)
 
 ### Selesai
