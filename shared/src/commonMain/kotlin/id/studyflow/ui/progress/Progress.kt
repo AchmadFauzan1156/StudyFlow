@@ -94,7 +94,12 @@ fun ProgressScreen(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatTile("Tugas selesai", "${state.taskDone}/${state.taskTotal}", Modifier.weight(1f))
-                    StatTile("Terlambat", state.overdue.toString(), Modifier.weight(1f))
+                    StatTile(
+                        "Terlambat",
+                        state.overdue.toString(),
+                        Modifier.weight(1f),
+                        accent = if (state.overdue > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    )
                 }
                 if (state.taskTotal > 0) {
                     Text("Penyelesaian tugas", style = MaterialTheme.typography.titleSmall)

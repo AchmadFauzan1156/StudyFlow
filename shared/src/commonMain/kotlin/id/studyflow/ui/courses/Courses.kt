@@ -1,6 +1,5 @@
 package id.studyflow.ui.courses
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,12 +9,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -37,6 +39,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,6 +51,7 @@ import id.studyflow.domain.Course
 import id.studyflow.domain.Limits
 import id.studyflow.ui.components.ConfirmDeleteDialog
 import id.studyflow.ui.components.EmptyState
+import id.studyflow.ui.components.InitialAvatar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -111,11 +117,16 @@ fun CoursesScreen(onOpenCourse: (String) -> Unit) {
                 list.isEmpty() -> EmptyState(
                     title = "Belum ada mata kuliah",
                     message = "Tambahkan mata kuliah pertama, misalnya Kriptografi.",
+                    action = { Button(onClick = { creating = true }) { Text("Tambah mata kuliah") } },
+                    icon = Icons.Outlined.Create,
                 )
-                else -> LazyColumn(
-                    modifier = Modifier.widthIn(max = 840.dp).fillMaxWidth(),
+                // Satu kolom di HP; otomatis menjadi beberapa kolom saat layar cukup lebar.
+                else -> LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 320.dp),
+                    modifier = Modifier.widthIn(max = 1160.dp).fillMaxWidth(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(list, key = { it.id }) { course ->
                         CourseCard(
@@ -123,6 +134,7 @@ fun CoursesScreen(onOpenCourse: (String) -> Unit) {
                             onClick = { onOpenCourse(course.id) },
                             onEdit = { editing = course },
                             onDelete = { deleting = course },
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -161,15 +173,27 @@ fun CoursesScreen(onOpenCourse: (String) -> Unit) {
 }
 
 @Composable
-private fun CourseCard(course: Course, onClick: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
+private fun CourseCard(
+    course: Course,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var menuOpen by remember { mutableStateOf(false) }
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().pointerHoverIcon(PointerIcon.Hand),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        Row(Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            InitialAvatar(course.name)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(course.name, style = MaterialTheme.typography.titleMedium)
+                Text(course.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 val meta = listOfNotNull(
                     course.semester,
                     "${course.noteCount} catatan",

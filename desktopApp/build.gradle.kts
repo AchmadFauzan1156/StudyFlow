@@ -31,6 +31,8 @@ compose.desktop {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe)
             packageName = "StudyFlow"
             packageVersion = "0.1.0"
+            // Tanpa modul ini aplikasi hasil paket langsung tertutup saat dibuka (hasil suggestRuntimeModules).
+            modules("java.instrument", "java.management", "jdk.unsupported")
         }
     }
 }

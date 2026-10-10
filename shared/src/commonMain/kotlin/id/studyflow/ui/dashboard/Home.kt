@@ -21,11 +21,24 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import id.studyflow.domain.formatDate
+import id.studyflow.domain.toLocalDateTime
+import id.studyflow.ui.components.SectionHeader
+import id.studyflow.ui.components.StatTile
 import id.studyflow.data.AppClock
 import id.studyflow.data.auth.AuthState
 import id.studyflow.data.auth.SessionManager
@@ -51,6 +64,7 @@ data class HomeUiState(
     val loading: Boolean = true,
     val courseCount: Int = 0,
     val upcoming: List<StudyTask> = emptyList(),
+    val openCount: Int = 0,
     val overdueCount: Int = 0,
     val nowMillis: Long = 0,
     val zone: TimeZone = TimeZone.UTC,
@@ -82,6 +96,7 @@ class HomeViewModel(
                 loading = false,
                 courseCount = courseCount,
                 upcoming = open.take(UPCOMING_LIMIT),
+                openCount = open.size,
                 overdueCount = open.count { deadlineStatus(it.dueAt, it.status, now, zone) == DeadlineStatus.OVERDUE },
                 nowMillis = now,
                 zone = zone,
@@ -109,66 +124,156 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(topBar = { TopAppBar(title = { Text("Beranda") }) }) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-            LazyColumn(
-                modifier = Modifier.widthIn(max = 840.dp).fillMaxWidth(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item { AccountCard(state.auth, onOpenAuth) }
-                if (state.conflicts > 0) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenConflicts),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                        ) {
-                            Text(
-                                "${state.conflicts} perubahan bentrok dengan perangkat lain. Ketuk untuk memilih versi.",
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(16.dp),
-                            )
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+            val hasCourses = !state.loading && state.courseCount > 0
+            if (maxWidth >= TWO_PANE_MIN_DP.dp) {
+                // Layar lebar: daftar deadline di kiri, ringkasan dan akun di panel kanan.
+                Row(
+                    Modifier.widthIn(max = 1160.dp).fillMaxSize().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        if (!state.loading) item { GreetingHeader(state) }
+                        if (state.conflicts > 0) item { ConflictCard(state.conflicts, onOpenConflicts) }
+                        mainItems(state, onOpenCourses, onOpenTask, viewModel::toggleDone)
+                    }
+                    Column(
+                        Modifier.width(320.dp).verticalScroll(rememberScrollState()).padding(vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        AccountCard(state.auth, onOpenAuth)
+                        if (hasCourses) {
+                            SectionHeader("Ringkasan")
+                            StatTilesPanel(state)
                         }
                     }
                 }
-                if (!state.loading && state.courseCount == 0) {
-                    item {
-                        EmptyState(
-                            title = "Belum ada mata kuliah",
-                            message = "Mulai dengan menambahkan mata kuliah, lalu isi catatan dan deadline tugas.",
-                            action = { Button(onClick = onOpenCourses) { Text("Tambah mata kuliah") } },
-                        )
-                    }
-                } else if (!state.loading) {
-                    item {
-                        val summary = buildString {
-                            append("${state.courseCount} mata kuliah")
-                            if (state.overdueCount > 0) append(" · ${state.overdueCount} tugas terlambat")
-                        }
-                        Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    item { Text("Deadline terdekat", style = MaterialTheme.typography.titleMedium) }
-                    if (state.upcoming.isEmpty()) {
-                        item {
-                            EmptyState(
-                                title = "Tidak ada tugas terbuka",
-                                message = "Tambahkan deadline dari tab Tugas pada mata kuliah.",
-                            )
-                        }
-                    }
-                    items(state.upcoming, key = { it.id }) { task ->
-                        TaskRow(
-                            task = task,
-                            nowMillis = state.nowMillis,
-                            zone = state.zone,
-                            showCourse = true,
-                            onToggleDone = { viewModel.toggleDone(task) },
-                            onClick = { onOpenTask(task) },
-                        )
-                    }
+            } else {
+                // Layar sempit: satu kolom, berurutan dari atas ke bawah.
+                val compact = maxWidth < COMPACT_MAX_DP.dp
+                LazyColumn(
+                    modifier = Modifier.widthIn(max = 840.dp).fillMaxWidth(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (!state.loading) item { GreetingHeader(state) }
+                    item { AccountCard(state.auth, onOpenAuth) }
+                    if (state.conflicts > 0) item { ConflictCard(state.conflicts, onOpenConflicts) }
+                    if (hasCourses) item { StatTiles(state, compact) }
+                    mainItems(state, onOpenCourses, onOpenTask, viewModel::toggleDone)
                 }
             }
         }
     }
+}
+
+/** Lebar minimum area konten (dp) untuk menampilkan beranda dalam dua panel. */
+private const val TWO_PANE_MIN_DP = 760
+
+/** Di bawah lebar ini (dp) kotak ringkasan memakai label pendek. */
+private const val COMPACT_MAX_DP = 480
+
+private fun LazyListScope.mainItems(
+    state: HomeUiState,
+    onOpenCourses: () -> Unit,
+    onOpenTask: (StudyTask) -> Unit,
+    onToggleDone: (StudyTask) -> Unit,
+) {
+    if (state.loading) return
+    if (state.courseCount == 0) {
+        item {
+            EmptyState(
+                title = "Belum ada mata kuliah",
+                message = "Mulai dengan menambahkan mata kuliah, lalu isi catatan dan deadline tugas.",
+                action = { Button(onClick = onOpenCourses) { Text("Tambah mata kuliah") } },
+                icon = Icons.Outlined.Create,
+            )
+        }
+        return
+    }
+    item {
+        SectionHeader(
+            "Deadline terdekat",
+            trailing = if (state.openCount > state.upcoming.size) "${state.upcoming.size} dari ${state.openCount}" else null,
+        )
+    }
+    if (state.upcoming.isEmpty()) {
+        item {
+            EmptyState(
+                title = "Tidak ada tugas terbuka",
+                message = "Tambahkan deadline dari tab Tugas pada mata kuliah.",
+                icon = Icons.Outlined.CheckCircle,
+            )
+        }
+    }
+    items(state.upcoming, key = { it.id }) { task ->
+        TaskRow(
+            task = task,
+            nowMillis = state.nowMillis,
+            zone = state.zone,
+            showCourse = true,
+            onToggleDone = { onToggleDone(task) },
+            onClick = { onOpenTask(task) },
+            modifier = Modifier.animateItem(),
+        )
+    }
+}
+
+@Composable
+private fun GreetingHeader(state: HomeUiState) {
+    val now = toLocalDateTime(state.nowMillis, state.zone)
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(greeting(now.hour), style = MaterialTheme.typography.headlineSmall)
+        Text(formatDate(now), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun ConflictCard(count: Int, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+    ) {
+        Text(
+            "$count perubahan bentrok dengan perangkat lain. Ketuk untuk memilih versi.",
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+/** Tiga kotak sejajar; [compact] memakai label pendek agar muat di layar HP. */
+@Composable
+private fun StatTiles(state: HomeUiState, compact: Boolean) {
+    val overdueAccent = if (state.overdueCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    Row(horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)) {
+        StatTile(if (compact) "Kuliah" else "Mata kuliah", state.courseCount.toString(), Modifier.weight(1f))
+        StatTile(if (compact) "Tugas" else "Tugas terbuka", state.openCount.toString(), Modifier.weight(1f))
+        StatTile("Terlambat", state.overdueCount.toString(), Modifier.weight(1f), accent = overdueAccent)
+    }
+}
+
+/** Panel samping: dua kotak sejajar dan satu kotak penuh di bawahnya. */
+@Composable
+private fun StatTilesPanel(state: HomeUiState) {
+    val overdueAccent = if (state.overdueCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        StatTile("Mata kuliah", state.courseCount.toString(), Modifier.weight(1f))
+        StatTile("Tugas terbuka", state.openCount.toString(), Modifier.weight(1f))
+    }
+    StatTile("Terlambat", state.overdueCount.toString(), Modifier.fillMaxWidth(), accent = overdueAccent)
+}
+
+private fun greeting(hour: Int): String = when (hour) {
+    in 4..10 -> "Selamat pagi"
+    in 11..14 -> "Selamat siang"
+    in 15..17 -> "Selamat sore"
+    else -> "Selamat malam"
 }
 
 @Composable

@@ -1,136 +1,207 @@
 # StudyFlow
 
-Aplikasi belajar pribadi untuk mahasiswa: simpan materi per mata kuliah, kelola deadline, sinkronkan antar perangkat, buat rangkuman dan kuis dengan AI, serta tanya isi PDF materi dengan rujukan halaman yang dapat diperiksa.
+Aplikasi belajar pribadi untuk mahasiswa. Simpan catatan per mata kuliah, kelola deadline tugas, sinkronkan antar perangkat, buat rangkuman dan kuis dengan AI, dan tanyakan isi PDF materi dengan rujukan halaman yang bisa diperiksa.
 
-- **Aplikasi**: Kotlin Multiplatform + Compose Multiplatform (Android dan desktop Windows).
-- **Backend**: Python + FastAPI + PostgreSQL (Supabase untuk Auth dan database terkelola).
-
-Status saat ini: **fase 0–6 selesai**:
-- Mode lokal tanpa akun.
-- Akun Supabase dengan sinkronisasi offline-first (outbox, konflik, isolasi per akun).
-- Rangkuman dan kuis pilihan ganda dari catatan memakai **Google Gemini (free tier)** dengan kuota harian, beserta riwayat skor yang bisa dibaca offline.
-- Unggah PDF berbasis teks dan **tanya materi** dengan sumber (judul dan halaman) yang dipetakan server.
-- Progres per topik, rekomendasi latihan, dan latihan kartu (Leitner).
-- Docker (API + worker), paket rilis Android/desktop, CI dengan pemindai rahasia. Lihat [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) dan [docs/DEMO.md](docs/DEMO.md).
-
-Rincian di [docs/PROGRESS.md](docs/PROGRESS.md), rencana di [docs/PLAN.md](docs/PLAN.md).
-
-## Struktur
-
-| Lokasi | Isi |
+| Bagian | Teknologi |
 |---|---|
-| `shared/` | UI bersama, ViewModel, domain, repository, Room, klien Auth/sinkronisasi (commonMain); adapter Android dan desktop |
-| `androidApp/` | Entry point Android |
-| `desktopApp/` | Entry point desktop dan packaging |
-| `backend/` | FastAPI (API) + worker AI dalam satu codebase; migrasi Alembic; provider AI (Gemini, OpenAI-compatible, demo); dokumen PDF dan RAG (pgvector) |
-| `docs/` | Rencana, keputusan, dependency, kontrak API, progres |
+| Aplikasi (Android dan desktop Windows) | Kotlin Multiplatform + Compose Multiplatform |
+| Backend (API dan worker AI) | Python + FastAPI + PostgreSQL (pgvector) |
+| Akun dan database terkelola | Supabase |
+| AI | Google Gemini (free tier), atau API kompatibel OpenAI |
+
+## Daftar isi
+
+1. [Fitur](#fitur)
+2. [Mulai cepat: mode lokal](#mulai-cepat-mode-lokal)
+3. [Prasyarat](#prasyarat)
+4. [Perintah aplikasi](#perintah-aplikasi)
+5. [Menjalankan backend](#menjalankan-backend)
+6. [Mengaktifkan akun dan sinkronisasi](#mengaktifkan-akun-dan-sinkronisasi)
+7. [Mengaktifkan AI](#mengaktifkan-ai)
+8. [Penyimpanan PDF](#penyimpanan-pdf)
+9. [Tes](#tes)
+10. [Masalah yang sering muncul](#masalah-yang-sering-muncul)
+11. [Konfigurasi dan rahasia](#konfigurasi-dan-rahasia)
+12. [Struktur proyek dan dokumen lain](#struktur-proyek-dan-dokumen-lain)
+
+## Fitur
+
+Semua fase yang direncanakan (0–6) sudah selesai.
+
+- **Mode lokal tanpa akun.** Mata kuliah, catatan, dan tugas tersimpan di perangkat dan bisa dipakai tanpa internet.
+- **Akun dan sinkronisasi offline-first.** Perubahan disimpan dulu di perangkat, lalu dikirim saat online. Konflik antar perangkat ditampilkan untuk dipilih, dan data tiap akun terpisah.
+- **Rangkuman dan kuis pilihan ganda** dari catatan, dengan kuota harian dan riwayat skor yang bisa dibaca offline.
+- **Tanya materi.** Unggah PDF berbasis teks, ajukan pertanyaan, dan dapatkan jawaban beserta sumbernya (judul dan halaman).
+- **Progres belajar.** Penguasaan per topik, rekomendasi latihan, dan latihan kartu (Leitner) dari soal yang pernah dijawab salah.
+- **Siap dirilis.** Docker untuk API dan worker, paket Android dan desktop, serta CI dengan pemindai rahasia.
+
+## Mulai cepat: mode lokal
+
+Cara tercepat untuk mencoba aplikasi. Tidak perlu backend, akun, atau API key.
+
+```powershell
+git clone https://github.com/AchmadFauzan1156/StudyFlow.git
+cd StudyFlow
+.\gradlew.bat :desktopApp:run
+```
+
+Build pertama mengunduh Gradle dan dependensi, jadi bisa memakan waktu beberapa menit. Di macOS/Linux, ganti `.\gradlew.bat` dengan `./gradlew`.
+
+Tanpa konfigurasi server, aplikasi berjalan dalam **mode lokal** dan tombol masuk tidak aktif. Untuk akun, sinkronisasi, dan AI, lanjutkan ke bagian [backend](#menjalankan-backend).
 
 ## Prasyarat
 
-- JDK 17+ (diuji dengan JDK 25). Gradle tidak perlu dipasang; gunakan wrapper.
-- Android SDK dengan platform **API 37**. `local.properties` di root (dibuat otomatis oleh Android Studio):
-  ```properties
-  sdk.dir=C\:/Users/<nama>/AppData/Local/Android/Sdk
-  ```
-- Python 3.12+ dan [uv](https://docs.astral.sh/uv/) untuk backend; Docker untuk PostgreSQL lokal.
+| Untuk | Yang dibutuhkan |
+|---|---|
+| Aplikasi desktop | JDK 17+ (diuji dengan JDK 25). Gradle tidak perlu dipasang; gunakan wrapper. |
+| Aplikasi Android | Android SDK dengan platform **API 37**, dan `local.properties` di root proyek. |
+| Backend | Python 3.12+, [uv](https://docs.astral.sh/uv/), dan Docker untuk PostgreSQL lokal. |
 
-## Menjalankan aplikasi
+`local.properties` biasanya dibuat otomatis oleh Android Studio. Kalau belum ada, buat sendiri:
 
-```powershell
-.\gradlew.bat :desktopApp:run            # aplikasi desktop
-.\gradlew.bat :androidApp:assembleDebug  # APK di androidApp\build\outputs\apk\debug\
-.\gradlew.bat :androidApp:installDebug   # pasang ke emulator/perangkat yang terhubung
-.\gradlew.bat :shared:jvmTest            # tes shared (logika, Room, sinkronisasi, sesi)
-.\gradlew.bat :androidApp:assembleRelease # APK release (bertanda tangan jika keystore.properties ada)
-.\gradlew.bat :desktopApp:packageZip     # paket desktop portabel di desktopAppuild\dist\
+```properties
+sdk.dir=C\:/Users/<nama>/AppData/Local/Android/Sdk
 ```
 
-macOS/Linux: ganti `.\gradlew.bat` dengan `./gradlew`.
+Jika platform API 37 belum terpasang tetapi lisensi SDK sudah disetujui, Gradle mengunduhnya sendiri saat build pertama.
 
-Tanpa konfigurasi server, aplikasi berjalan dalam **mode lokal** (tidak ada tombol masuk yang aktif). Data desktop ada di `%APPDATA%\StudyFlow\` (Windows) atau `~/.studyflow/`: `studyflow-local.db` untuk mode lokal dan `studyflow-user-<id>.db` per akun.
+## Perintah aplikasi
 
-### Mengaktifkan akun dan sinkronisasi
+| Perintah | Hasil |
+|---|---|
+| `.\gradlew.bat :desktopApp:run` | Menjalankan aplikasi desktop |
+| `.\gradlew.bat :androidApp:assembleDebug` | APK debug di `androidApp\build\outputs\apk\debug\` |
+| `.\gradlew.bat :androidApp:installDebug` | Memasang APK ke emulator atau perangkat yang terhubung |
+| `.\gradlew.bat :shared:jvmTest` | Tes kode bersama (logika, Room, sinkronisasi, sesi) |
+| `.\gradlew.bat :androidApp:assembleRelease` | APK rilis (bertanda tangan jika `keystore.properties` ada) |
+| `.\gradlew.bat :desktopApp:packageZip` | Paket desktop portabel di `desktopApp\build\dist\` |
 
-Nilai berikut **bukan rahasia** (URL dan publishable key) dan dibaca saat build dari `local.properties` atau environment variable:
+Data aplikasi desktop tersimpan di `%APPDATA%\StudyFlow\` (Windows) atau `~/.studyflow/`: `studyflow-local.db` untuk mode lokal dan `studyflow-user-<id>.db` untuk tiap akun.
+
+## Menjalankan backend
+
+Backend terdiri dari dua proses dari satu codebase: **API** dan **worker**. Worker yang memanggil AI dan memproses PDF, jadi tanpa worker permintaan AI hanya mengantre.
+
+```powershell
+cd backend
+docker compose up -d                 # PostgreSQL (pgvector) di localhost:54329
+uv sync                              # pasang dependensi
+Copy-Item .env.example .env          # lalu isi nilainya; jangan commit .env
+uv run alembic upgrade head          # buat tabel
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+Di terminal kedua, jalankan worker:
+
+```powershell
+cd backend
+uv run python -m app.worker
+```
+
+Periksa di `http://127.0.0.1:8000/health`. Dokumentasi interaktif ada di `http://127.0.0.1:8000/docs`.
+
+Ingin mencoba semuanya dengan Docker dan tanpa API key? Jalankan `docker compose -f docker-compose.demo.yml up --build` dan ikuti [docs/DEMO.md](docs/DEMO.md).
+
+## Mengaktifkan akun dan sinkronisasi
+
+Ada dua tempat yang perlu diisi: aplikasi dan backend. Nilainya diambil dari dashboard Supabase (**Project Settings > API Keys**, dan tombol **Connect**).
+
+**1. Aplikasi: `local.properties` di root proyek.** Nilai ini bukan rahasia dan dibaca saat build, jadi aplikasi harus di-build ulang setelah diubah.
 
 ```properties
 studyflow.supabase.url=https://<project-ref>.supabase.co
 studyflow.supabase.publishableKey=sb_publishable_...
 studyflow.api.baseUrl=http://127.0.0.1:8000
-# Opsional, untuk emulator Android yang menjangkau host lewat 10.0.2.2:
+# Opsional, untuk emulator Android yang menjangkau komputer lewat 10.0.2.2:
 studyflow.api.baseUrl.android=http://10.0.2.2:8000
 ```
 
-Padanan environment variable: `STUDYFLOW_SUPABASE_URL`, `STUDYFLOW_SUPABASE_PUBLISHABLE_KEY`, `STUDYFLOW_API_BASE_URL`, `STUDYFLOW_API_BASE_URL_ANDROID`. Jangan pernah menaruh service-role key atau kunci AI di aplikasi.
+Setiap baris harus berbentuk `nama=nilai`. Padanan environment variable: `STUDYFLOW_SUPABASE_URL`, `STUDYFLOW_SUPABASE_PUBLISHABLE_KEY`, `STUDYFLOW_API_BASE_URL`, `STUDYFLOW_API_BASE_URL_ANDROID`.
 
-Build debug Android mengizinkan HTTP tanpa TLS hanya ke `10.0.2.2`, `localhost`, dan `127.0.0.1`; build release mewajibkan HTTPS.
+**2. Backend: `backend/.env`.**
 
-Token disimpan terenkripsi: Android Keystore (AES-GCM) dan Windows DPAPI. Di desktop non-Windows sesi hanya disimpan di memori, jadi pengguna perlu masuk lagi setelah aplikasi ditutup.
-
-## Menjalankan backend
-
-```powershell
-cd backend
-docker compose up -d                 # PostgreSQL (pgvector) di localhost:54329
-uv sync
-Copy-Item .env.example .env          # isi STUDYFLOW_SUPABASE_URL, dll.; jangan commit .env
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload --port 8000
+```properties
+STUDYFLOW_SUPABASE_URL=https://<project-ref>.supabase.co
 ```
 
-Demo lengkap dengan Docker (tanpa API key): `docker compose -f docker-compose.demo.yml up --build` (lihat [docs/DEMO.md](docs/DEMO.md)).
+Gunakan URL proyek saja, tanpa `/rest/v1` atau `/auth/v1` di belakangnya.
 
-Buka `http://127.0.0.1:8000/health` dan dokumentasi interaktif di `http://127.0.0.1:8000/docs`.
+**3. Database di Supabase (opsional).** Untuk memakai database Supabase alih-alih Docker lokal, isi `STUDYFLOW_DATABASE_URL` dengan connection string proyek (awali dengan `postgresql+psycopg://`), lalu jalankan `uv run alembic upgrade head`. Migrasi mengaktifkan RLS default-deny dan mencabut hak `anon`/`authenticated` pada tabel bisnis; aplikasi hanya mengakses data lewat backend.
 
-Di Supabase: jalankan `uv run alembic upgrade head` dengan `STUDYFLOW_DATABASE_URL` proyekmu. Migrasi mengaktifkan RLS default-deny dan mencabut hak `anon`/`authenticated` pada tabel bisnis.
+Catatan keamanan:
 
-### Mengaktifkan AI (Google Gemini, free tier)
+- Jangan pernah menaruh service-role key atau kunci AI di aplikasi.
+- Build debug Android mengizinkan HTTP tanpa TLS hanya ke `10.0.2.2`, `localhost`, dan `127.0.0.1`. Build rilis mewajibkan HTTPS.
+- Token disimpan terenkripsi: Android Keystore (AES-GCM) dan Windows DPAPI. Di desktop non-Windows sesi hanya disimpan di memori, jadi pengguna perlu masuk lagi setelah aplikasi ditutup.
 
-1. Buat API key sendiri di https://aistudio.google.com/apikey. Jangan tempel key ke chat atau commit.
+## Mengaktifkan AI
+
+Default-nya AI mati (`none`): fitur AI dan unggah PDF membalas 503, dan fitur lain tetap berjalan.
+
+### Google Gemini (free tier)
+
+1. Buat API key di https://aistudio.google.com/apikey. Jangan tempel key ke chat atau commit.
 2. Isi di `backend/.env`:
    ```properties
    STUDYFLOW_AI_PROVIDER=gemini
    STUDYFLOW_EMBEDDING_PROVIDER=gemini
    STUDYFLOW_AI_API_KEY=<key kamu>
    ```
-   - Model generasi default: `gemini-3.8-flash` (`generateContent` dengan output JSON sesuai schema).
-   - Embedding: `gemini-embedding-001` (768 dimensi). Key yang sama dipakai untuk keduanya.
-3. Jalankan API dan **worker** (proses terpisah; worker yang memanggil AI dan memproses PDF):
-   ```powershell
-   uv run uvicorn app.main:app --port 8000
-   uv run python -m app.worker
-   ```
-4. Kalibrasi ambang relevansi tanya materi dengan fixture evaluasi (memakai embedding Gemini sungguhan):
-   ```powershell
-   uv run python -m app.eval.rag_eval tests/fixtures/rag_eval.json
-   ```
-   Laporan ini menampilkan hit@k dan jarak pertanyaan relevan vs di luar materi; atur `STUDYFLOW_RAG_MAX_DISTANCE` di antaranya.
+3. Jalankan ulang API **dan** worker.
+
+| Kegunaan | Model default |
+|---|---|
+| Rangkuman, kuis, jawaban | `gemini-3.8-flash` (`generateContent` dengan output JSON sesuai schema) |
+| Embedding PDF | `gemini-embedding-001` (768 dimensi) |
+
+Key yang sama dipakai untuk keduanya. Model generasi bisa diganti lewat `STUDYFLOW_AI_MODEL`. Mengganti model atau dimensi embedding berarti semua PDF harus diindeks ulang.
 
 **Penting (ketentuan free tier Gemini):** Google dapat memakai isi yang dikirim beserta hasilnya untuk meningkatkan produknya, dan peninjau manusia dapat membacanya. Google juga meminta agar informasi sensitif, rahasia, atau pribadi tidak dikirim, dan layanan ini untuk usia 18+. Aplikasi menampilkan pemberitahuan ini dan meminta persetujuan sebelum catatan, pertanyaan, atau PDF dikirim. Pengecualian: di EEA, Swiss, dan UK berlaku ketentuan layanan berbayar.
 
-Pembatasan agar tetap gratis (semua dapat diubah di `.env`; batas free tier per project terlihat di Google AI Studio):
-- 10 permintaan AI per pengguna per hari, dan 200 per hari untuk seluruh server.
-- 20 unggahan PDF per pengguna per hari, dengan kuota terpisah dari permintaan AI.
-- Maksimal 12.000 karakter per catatan. PDF maksimal 10 MB dan 100 halaman. Yang melebihi ditolak dengan jelas, tidak dipotong diam-diam.
-- Jeda minimal 6 detik antar panggilan AI di worker.
-- Jika penyedia membalas 429 atau timeout, job dijadwalkan ulang (maks. 3 percobaan).
-- Kuota dikembalikan jika job gagal bukan karena pengguna, atau jika pertanyaan tidak punya konteks di materi (model tidak dipanggil).
+### Batas bawaan agar tetap gratis
 
-Alternatif: Groq (`STUDYFLOW_AI_PROVIDER=openai_compatible`, default `openai/gpt-oss-120b`) untuk generasi. Groq tidak menyediakan embedding, jadi `STUDYFLOW_EMBEDDING_PROVIDER` tetap `gemini`, dengan `STUDYFLOW_EMBEDDING_API_KEY` terpisah.
+Semua bisa diubah di `.env`. Batas free tier per project terlihat di Google AI Studio.
 
-Untuk mencoba tanpa API key: `STUDYFLOW_AI_PROVIDER=fake` dan `STUDYFLOW_EMBEDDING_PROVIDER=fake`. Hasilnya berlabel **[Demo]** dan tidak memakai AI.
+| Batas | Nilai default |
+|---|---|
+| Permintaan AI per pengguna per hari | 10 |
+| Permintaan AI untuk seluruh server per hari | 200 |
+| Unggahan PDF per pengguna per hari (kuota terpisah) | 20 |
+| Panjang catatan | 12.000 karakter |
+| Ukuran PDF | 10 MB dan 100 halaman |
+| Jeda antar panggilan AI di worker | 6 detik |
+| Percobaan ulang saat 429 atau timeout | maksimal 3 |
 
-### Penyimpanan PDF
+Yang melebihi batas ditolak dengan pesan jelas, tidak dipotong diam-diam. Kuota dikembalikan jika job gagal bukan karena pengguna, atau jika pertanyaan tidak punya konteks di materi (model tidak dipanggil).
+
+### Pilihan lain
+
+- **Groq atau API kompatibel OpenAI:** `STUDYFLOW_AI_PROVIDER=openai_compatible` (default `openai/gpt-oss-120b`). Groq tidak menyediakan embedding, jadi `STUDYFLOW_EMBEDDING_PROVIDER` tetap `gemini` dengan `STUDYFLOW_EMBEDDING_API_KEY` terpisah.
+- **Tanpa API key:** `STUDYFLOW_AI_PROVIDER=fake` dan `STUDYFLOW_EMBEDDING_PROVIDER=fake`. Hasilnya berlabel **[Demo]** dan tidak memakai AI. Hanya untuk development; ditolak saat `STUDYFLOW_APP_ENV=production`.
+
+### Kalibrasi tanya materi
+
+Ambang relevansi diatur dengan fixture evaluasi yang memakai embedding Gemini sungguhan:
+
+```powershell
+uv run python -m app.eval.rag_eval tests/fixtures/rag_eval.json
+```
+
+Laporan menampilkan hit@k serta jarak pertanyaan relevan dan di luar materi. Atur `STUDYFLOW_RAG_MAX_DISTANCE` di antara keduanya.
+
+## Penyimpanan PDF
 
 - **Development:** `STUDYFLOW_STORAGE_BACKEND=local` menyimpan berkas di `backend/.storage/` (di-ignore Git).
-- **Supabase:** buat bucket **privat** `documents`, lalu isi:
+- **Supabase:** buat bucket **privat** bernama `documents`, lalu isi:
   ```properties
   STUDYFLOW_STORAGE_BACKEND=supabase
   STUDYFLOW_SUPABASE_SERVICE_KEY=<secret key, hanya di backend>
   ```
   Berkas hanya diakses lewat backend setelah pemeriksaan kepemilikan.
 
-### Tes backend
+## Tes
+
+### Backend
 
 ```powershell
 cd backend
@@ -140,9 +211,11 @@ uv run pytest                                    # + tes integrasi PostgreSQL
 uv run ruff check .
 ```
 
-### Tes end-to-end dua perangkat
+Tanpa `STUDYFLOW_TEST_DATABASE_URL`, tes integrasi dilewati.
 
-Jalankan backend dan worker dengan JWT HS256 uji dan provider demo (tanpa API key), lalu tes Kotlin memakai secret yang sama:
+### End-to-end dua perangkat
+
+Jalankan backend dan worker dengan JWT HS256 uji dan provider demo (tanpa API key):
 
 ```powershell
 cd backend
@@ -158,6 +231,8 @@ Start-Process uv -ArgumentList "run","python","-m","app.worker"
 uv run uvicorn app.main:app --port 8766
 ```
 
+Lalu jalankan tes Kotlin dengan secret yang sama:
+
 ```powershell
 $env:STUDYFLOW_E2E_API_URL = "http://127.0.0.1:8766"
 $env:STUDYFLOW_E2E_JWT_SECRET = "e2e-secret-with-at-least-32-bytes-00000"
@@ -167,8 +242,40 @@ $env:STUDYFLOW_E2E_AI = "1"
 
 Tanpa variabel `STUDYFLOW_E2E_*`, tes E2E dilewati.
 
+## Masalah yang sering muncul
+
+| Gejala | Penyebab dan solusi |
+|---|---|
+| `uv` tidak dikenali | uv belum ada di PATH. Pasang lewat [panduan resminya](https://docs.astral.sh/uv/), atau `python -m pip install --user uv` lalu panggil sebagai `python -m uv ...`. |
+| Tombol masuk tidak aktif | `local.properties` belum berisi nilai Supabase, atau barisnya tidak berbentuk `nama=nilai`. Isi, lalu build ulang aplikasi. |
+| Backend menolak token setelah berhasil masuk | `STUDYFLOW_SUPABASE_URL` memuat akhiran seperti `/rest/v1/`. Gunakan URL proyek saja. |
+| Daftar gagal dengan "email rate limit exceeded" | Email bawaan Supabase hanya beberapa per jam. Untuk development, matikan **Confirm email** di **Authentication > Sign In / Providers > Email**; untuk produksi, pasang SMTP sendiri. |
+| `password authentication failed for user "postgres"` | Password di `STUDYFLOW_DATABASE_URL` salah. Reset di **Project Settings > Database** dan perbarui URL-nya. |
+| Fitur AI atau unggah PDF membalas 503 | Provider masih `none`, atau key kosong. Lihat [Mengaktifkan AI](#mengaktifkan-ai). |
+| Permintaan AI tidak pernah selesai | Worker belum dijalankan. |
+| Build Android gagal mencari platform | Platform API 37 belum terpasang dan lisensi SDK belum disetujui. Pasang lewat SDK Manager di Android Studio. |
+
 ## Konfigurasi dan rahasia
 
-- Kunci AI, kredensial database, dan service-role key hanya ada di backend/worker.
+- Kunci AI, kredensial database, dan service-role key hanya ada di backend dan worker.
 - `backend/.env.example` berisi semua variabel yang dikenal, tanpa nilai rahasia. Salin ke `.env` (di-ignore Git).
-- Tanpa provider (`STUDYFLOW_AI_PROVIDER=none` / `STUDYFLOW_EMBEDDING_PROVIDER=none`, default), fitur AI dan unggah PDF mengembalikan 503 dan fitur lain tetap berjalan. `fake` hanya untuk development, dan semua hasilnya berlabel **[Demo]**.
+- `local.properties`, `.env`, dan `keystore.properties` di-ignore Git. Jangan commit ketiganya.
+
+## Struktur proyek dan dokumen lain
+
+| Lokasi | Isi |
+|---|---|
+| `shared/` | UI bersama, ViewModel, domain, repository, Room, klien Auth dan sinkronisasi (commonMain); adapter Android dan desktop |
+| `androidApp/` | Entry point Android |
+| `desktopApp/` | Entry point desktop dan packaging |
+| `backend/` | FastAPI (API) dan worker AI; migrasi Alembic; provider AI (Gemini, OpenAI-compatible, demo); dokumen PDF dan RAG (pgvector) |
+| `docs/` | Rencana, keputusan, dependency, kontrak API, progres |
+
+| Dokumen | Isi |
+|---|---|
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deployment ke server, build rilis, backup |
+| [docs/DEMO.md](docs/DEMO.md) | Skrip demo end-to-end tanpa API key |
+| [docs/API.md](docs/API.md) | Kontrak API |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Keputusan teknis dan alasannya |
+| [docs/PROGRESS.md](docs/PROGRESS.md) | Rincian progres per fase |
+| [docs/PLAN.md](docs/PLAN.md) | Rencana fase |

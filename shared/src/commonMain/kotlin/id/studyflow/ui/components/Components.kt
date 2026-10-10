@@ -1,14 +1,19 @@
 package id.studyflow.ui.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -17,21 +22,30 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import id.studyflow.domain.DeadlineStatus
 import id.studyflow.domain.StudyTask
 import id.studyflow.domain.TaskStatus
 import id.studyflow.domain.deadlineStatus
 import id.studyflow.domain.formatDateTime
+import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 
 @Composable
@@ -40,12 +54,15 @@ fun EmptyState(
     message: String,
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null,
+    icon: ImageVector = Icons.Outlined.Info,
 ) {
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        IconBadge(icon, size = 56.dp)
+        Spacer(Modifier.height(4.dp))
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Text(
             message,
@@ -60,14 +77,57 @@ fun EmptyState(
     }
 }
 
+/** Ikon di dalam lingkaran berwarna lembut; dipakai untuk keadaan kosong dan penanda bagian. */
 @Composable
-fun InfoCard(title: String, message: String, modifier: Modifier = Modifier) {
+fun IconBadge(
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
+    container: Color = MaterialTheme.colorScheme.primaryContainer,
+    content: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+) {
+    Box(modifier.size(size).background(container, CircleShape), contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(size / 2))
+    }
+}
+
+/** Inisial nama di kotak membulat; warnanya tetap untuk nama yang sama agar mudah dikenali. */
+@Composable
+fun InitialAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
+    val colors = MaterialTheme.colorScheme
+    val palette = listOf(
+        colors.primaryContainer to colors.onPrimaryContainer,
+        colors.tertiaryContainer to colors.onTertiaryContainer,
+        colors.secondaryContainer to colors.onSecondaryContainer,
+    )
+    val (container, content) = palette[name.sumOf { it.code } % palette.size]
+    Box(modifier.size(size).background(container, MaterialTheme.shapes.small), contentAlignment = Alignment.Center) {
+        Text(
+            name.trim().take(1).uppercase().ifEmpty { "?" },
+            style = MaterialTheme.typography.titleMedium,
+            color = content,
+        )
+    }
+}
+
+@Composable
+fun SectionHeader(title: String, modifier: Modifier = Modifier, trailing: String? = null) {
+    Row(modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+        if (trailing != null) {
+            Text(trailing, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+fun InfoCard(title: String, message: String, modifier: Modifier = Modifier, icon: ImageVector = Icons.Outlined.Info) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
     ) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -121,8 +181,37 @@ fun TaskRow(
 ) {
     val status = deadlineStatus(task.dueAt, task.status, nowMillis, zone)
     val done = task.status == TaskStatus.DONE
+    // Geser ke kanan untuk menandai selesai/belum; kartu selalu kembali ke posisi semula.
+    val swipeState = rememberSwipeToDismissBoxState()
+    val scope = rememberCoroutineScope()
+    SwipeToDismissBox(
+        state = swipeState,
+        modifier = modifier.fillMaxWidth(),
+        enableDismissFromEndToStart = false,
+        onDismiss = { value ->
+            if (value == SwipeToDismissBoxValue.StartToEnd) onToggleDone()
+            scope.launch { swipeState.reset() }
+        },
+        backgroundContent = {
+            Row(
+                Modifier.fillMaxSize()
+                    .background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.medium)
+                    .padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(
+                    if (done) "Tandai belum selesai" else "Tandai selesai",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        },
+    ) {
     Card(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().pointerHoverIcon(PointerIcon.Hand),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Row(
@@ -148,17 +237,23 @@ fun TaskRow(
             DeadlineBadge(status)
         }
     }
+    }
 }
 
 @Composable
-fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
+fun StatTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    accent: Color = MaterialTheme.colorScheme.primary,
+) {
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(value, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(value, style = MaterialTheme.typography.headlineMedium, color = accent, maxLines = 1)
         }
     }
 }
