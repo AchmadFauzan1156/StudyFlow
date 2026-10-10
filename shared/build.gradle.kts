@@ -114,6 +114,10 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.jna.platform)
         }
+        jvmTest.dependencies {
+            // viewModelScope memakai Dispatchers.Main; di JVM disediakan coroutines-swing.
+            implementation(libs.kotlinx.coroutines.swing)
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
