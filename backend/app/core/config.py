@@ -84,6 +84,8 @@ class Settings(BaseSettings):
     ai_min_interval_seconds: float = 6.0
     ai_max_attempts: int = 3
     ai_job_lease_seconds: int = 180
+    # Jalankan worker sebagai thread di dalam proses API (hosting gratis dengan satu service).
+    embedded_worker: bool = False
     quiz_min_questions: int = 3
     quiz_max_questions: int = 10
 
