@@ -25,6 +25,7 @@ val appConfigValues = mapOf(
     "supabasePublishableKey" to configValue("studyflow.supabase.publishableKey", "STUDYFLOW_SUPABASE_PUBLISHABLE_KEY"),
     "apiBaseUrl" to configValue("studyflow.api.baseUrl", "STUDYFLOW_API_BASE_URL"),
     "androidApiBaseUrl" to configValue("studyflow.api.baseUrl.android", "STUDYFLOW_API_BASE_URL_ANDROID"),
+    "appVersion" to providers.gradleProperty("studyflow.version").get(),
 )
 
 val generateAppConfig = tasks.register("generateAppConfig") {

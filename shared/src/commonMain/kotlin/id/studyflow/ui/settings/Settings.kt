@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import id.studyflow.config.AppConfig
 import id.studyflow.data.AppClock
 import id.studyflow.data.repository.SettingsRepository
 import id.studyflow.domain.ThemeMode
@@ -83,7 +84,7 @@ fun SettingsScreen(onOpenAuth: () -> Unit, onOpenConflicts: () -> Unit) {
                 HorizontalDivider()
                 Text("Tentang", style = MaterialTheme.typography.titleMedium)
                 SettingRow("Zona waktu tampilan", state.timeZoneId)
-                SettingRow("Versi", "0.2.0")
+                SettingRow("Versi", AppConfig.appVersion)
             }
         }
     }

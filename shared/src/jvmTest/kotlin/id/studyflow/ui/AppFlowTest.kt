@@ -29,6 +29,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import id.studyflow.config.AppConfig
 import id.studyflow.data.InMemoryDatabases
 import id.studyflow.data.auth.MemorySessionStore
 import id.studyflow.data.auth.SecureSessionStore
@@ -146,6 +147,14 @@ class AppFlowTest {
         waitForText("Laporan")
         ui { onAllNodes(isToggleable())[0].performClick() }
         waitUntil(timeoutMillis = 5_000) { onAllNodes(hasText("Laporan")).fetchSemanticsNodes().isEmpty() }
+        settle()
+    }
+
+    @Test
+    fun settingsShowsBuildVersion() = runComposeUiTest {
+        showApp()
+        ui { onNode(hasText("Pengaturan") and isSelectable()).performClick() }
+        waitForText(AppConfig.appVersion)
         settle()
     }
 

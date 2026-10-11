@@ -18,6 +18,8 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+val appVersion = providers.gradleProperty("studyflow.version").get()
+
 dependencies {
     implementation(projects.shared)
     implementation(compose.desktop.currentOs)
@@ -30,7 +32,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe)
             packageName = "StudyFlow"
-            packageVersion = "0.1.0"
+            packageVersion = appVersion
             // Tanpa modul ini aplikasi hasil paket langsung tertutup saat dibuka (hasil suggestRuntimeModules).
             modules("java.instrument", "java.management", "jdk.unsupported")
             description = "Catatan kuliah, tugas, dan belajar dengan AI"
@@ -53,6 +55,6 @@ tasks.register<Zip>("packageZip") {
     description = "Membuat StudyFlow-<versi>-windows.zip dari createDistributable."
     dependsOn("createDistributable")
     from(layout.buildDirectory.dir("compose/binaries/main/app"))
-    archiveFileName.set("StudyFlow-0.1.0-${System.getProperty("os.name").substringBefore(' ').lowercase()}.zip")
+    archiveFileName.set("StudyFlow-$appVersion-${System.getProperty("os.name").substringBefore(' ').lowercase()}.zip")
     destinationDirectory.set(layout.buildDirectory.dir("dist"))
 }
