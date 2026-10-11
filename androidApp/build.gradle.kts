@@ -22,7 +22,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         // Naikkan setiap rilis agar APK baru bisa dipasang menimpa versi lama.
-        versionCode = 2
+        versionCode = 3
         versionName = providers.gradleProperty("studyflow.version").get()
     }
 

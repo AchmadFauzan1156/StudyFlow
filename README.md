@@ -47,7 +47,7 @@ Semua fase yang direncanakan (0–6) sudah selesai.
 
 ## Tech stack dan versi
 
-Versi aplikasi: **0.2.0** (`studyflow.version` di `gradle.properties`). Versi library aplikasi diatur di `gradle/libs.versions.toml`; versi backend dikunci di `backend/uv.lock`. Alasan pemilihan dan cara memperbarui ada di [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md).
+Versi aplikasi: **0.2.1** (`studyflow.version` di `gradle.properties`). Versi library aplikasi diatur di `gradle/libs.versions.toml`; versi backend dikunci di `backend/uv.lock`. Alasan pemilihan dan cara memperbarui ada di [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md).
 
 ### Aplikasi (Android dan Windows)
 
