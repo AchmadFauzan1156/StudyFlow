@@ -49,6 +49,7 @@ import androidx.lifecycle.viewModelScope
 import id.studyflow.data.repository.CourseRepository
 import id.studyflow.domain.Course
 import id.studyflow.domain.Limits
+import id.studyflow.ui.LocalAppActions
 import id.studyflow.ui.components.ConfirmDeleteDialog
 import id.studyflow.ui.components.EmptyState
 import id.studyflow.ui.components.InitialAvatar
@@ -93,6 +94,7 @@ class CoursesViewModel(private val repository: CourseRepository) : ViewModel() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoursesScreen(onOpenCourse: (String) -> Unit) {
+    val actions = LocalAppActions.current
     val viewModel = koinViewModel<CoursesViewModel>()
     val courses by viewModel.courses.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
@@ -150,6 +152,7 @@ fun CoursesScreen(onOpenCourse: (String) -> Unit) {
                 viewModel.save(editing?.id, name, semester) {
                     creating = false
                     editing = null
+                    actions.showMessage("Mata kuliah disimpan")
                 }
             },
             onDismiss = {
@@ -166,6 +169,7 @@ fun CoursesScreen(onOpenCourse: (String) -> Unit) {
             onConfirm = {
                 viewModel.delete(course.id)
                 deleting = null
+                actions.showMessage("Mata kuliah dihapus")
             },
             onDismiss = { deleting = null },
         )

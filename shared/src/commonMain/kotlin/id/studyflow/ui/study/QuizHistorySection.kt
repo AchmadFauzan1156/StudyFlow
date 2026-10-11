@@ -21,7 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import id.studyflow.data.auth.AuthState
 import id.studyflow.data.auth.SessionManager
 import id.studyflow.domain.formatDateTime
-import id.studyflow.ui.components.InfoCard
+import id.studyflow.ui.components.NeedsAccountPanel
 import kotlinx.datetime.TimeZone
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -31,7 +31,11 @@ fun QuizHistorySection(zone: TimeZone, onOpenAttempt: (quizId: String, attemptId
     val session = koinInject<SessionManager>()
     val auth by session.state.collectAsStateWithLifecycle()
     if (auth !is AuthState.SignedIn) {
-        InfoCard("Riwayat kuis", "Masuk untuk membuat kuis dari catatan dan melihat riwayat skormu.")
+        NeedsAccountPanel(
+            "Riwayat kuis",
+            "Buat kuis dari catatan dan lihat perkembangan skormu.",
+            canSignIn = auth is AuthState.SignedOut,
+        )
         return
     }
     val viewModel = koinViewModel<QuizHistoryViewModel>()

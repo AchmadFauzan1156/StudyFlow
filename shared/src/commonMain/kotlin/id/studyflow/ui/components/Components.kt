@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -45,6 +46,7 @@ import id.studyflow.domain.StudyTask
 import id.studyflow.domain.TaskStatus
 import id.studyflow.domain.deadlineStatus
 import id.studyflow.domain.formatDateTime
+import id.studyflow.ui.LocalAppActions
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 
@@ -131,6 +133,38 @@ fun InfoCard(title: String, message: String, modifier: Modifier = Modifier, icon
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            }
+        }
+    }
+}
+
+/**
+ * Fitur yang butuh akun. Jika server tersedia ([canSignIn]), tampilkan tombol masuk langsung di tempat agar
+ * pengguna tidak perlu mencari halaman Pengaturan.
+ */
+@Composable
+fun NeedsAccountPanel(title: String, benefit: String, canSignIn: Boolean, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                Text(
+                    if (canSignIn) {
+                        "$benefit Butuh akun dan koneksi internet."
+                    } else {
+                        "$benefit Versi aplikasi ini belum terhubung ke server, jadi fitur ini belum tersedia."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                if (canSignIn) {
+                    val actions = LocalAppActions.current
+                    Button(onClick = actions.openAccount) { Text("Masuk atau daftar") }
+                }
             }
         }
     }

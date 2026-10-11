@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
@@ -56,14 +57,22 @@ class AppFlowTest {
     private val databases = InMemoryDatabases()
 
     @BeforeTest
-    fun start() {
+    fun start() = startWith(ServerConfig("", "", ""))
+
+    /** Build rilis: server terkonfigurasi tetapi belum masuk; jaringan tetap palsu. */
+    private fun useConfiguredServer() {
+        stopKoin()
+        startWith(ServerConfig("https://contoh.invalid", "kunci-publik", "https://api.contoh.invalid"))
+    }
+
+    private fun startWith(serverConfig: ServerConfig) {
         startKoin {
             modules(
                 module {
                     single<DatabaseFactory> { databases }
                     single<SecureSessionStore> { MemorySessionStore() }
                     single { HttpClient(MockEngine { respondError(HttpStatusCode.ServiceUnavailable) }) { studyFlowDefaults() } }
-                    single { ServerConfig("", "", "") }
+                    single { serverConfig }
                 },
                 dataModule,
                 viewModelModule,
@@ -167,6 +176,51 @@ class AppFlowTest {
         waitUntil(timeoutMillis = 5_000) { onAllNodes(hasText("Pengaturan")).fetchSemanticsNodes().size >= 2 }
         ui { onRoot().performKeyInput { withKeyDown(Key.CtrlLeft) { pressKey(Key.Two) } } }
         waitForText("Tambah mata kuliah")
+        settle()
+    }
+
+    private fun ComposeUiTest.openStudyTabOfNewCourse() {
+        ui { onNode(hasText("Mata Kuliah") and isSelectable()).performClick() }
+        ui { onNode(hasText("Tambah mata kuliah")).performClick() }
+        ui { onAllNodes(hasSetTextAction())[0].performTextInput("Kriptografi") }
+        ui { onNode(hasText("Simpan")).performClick() }
+        waitForText("Kriptografi")
+        ui { onAllNodes(hasText("Kriptografi"))[0].performClick() }
+        ui { onNode(hasText("Belajar") and isSelectable()).performClick() }
+    }
+
+    @Test
+    fun accountGatedTabOffersSignInWhenServerConfigured() = runComposeUiTest {
+        useConfiguredServer()
+        showApp()
+        openStudyTabOfNewCourse()
+        ui { onNode(hasText("Masuk atau daftar")).performClick() }
+        waitForText("Akun StudyFlow")
+        settle()
+    }
+
+    @Test
+    fun accountGatedTabHasNoSignInWithoutServer() = runComposeUiTest {
+        showApp()
+        openStudyTabOfNewCourse()
+        waitForText("Belajar dengan AI")
+        onAllNodes(hasText("Masuk atau daftar")).assertCountEquals(0)
+        settle()
+    }
+
+    @Test
+    fun savingNoteShowsConfirmation() = runComposeUiTest {
+        showApp()
+        ui { onNode(hasText("Mata Kuliah") and isSelectable()).performClick() }
+        ui { onNode(hasText("Tambah mata kuliah")).performClick() }
+        ui { onAllNodes(hasSetTextAction())[0].performTextInput("Kriptografi") }
+        ui { onNode(hasText("Simpan")).performClick() }
+        waitForText("Mata kuliah disimpan")
+        ui { onAllNodes(hasText("Kriptografi"))[0].performClick() }
+        ui { fab("Catatan").performClick() }
+        ui { onAllNodes(hasSetTextAction())[0].performTextInput("RSA") }
+        ui { onNode(hasText("Simpan")).performClick() }
+        waitForText("Catatan disimpan")
         settle()
     }
 }

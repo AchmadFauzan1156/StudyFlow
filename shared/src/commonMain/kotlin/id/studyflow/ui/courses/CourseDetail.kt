@@ -50,6 +50,7 @@ import id.studyflow.domain.Note
 import id.studyflow.domain.StudyTask
 import id.studyflow.domain.TaskStatus
 import id.studyflow.domain.formatDateTime
+import id.studyflow.ui.LocalAppActions
 import id.studyflow.ui.components.ConfirmDeleteDialog
 import id.studyflow.ui.components.EmptyState
 import id.studyflow.ui.components.TaskRow
@@ -145,6 +146,7 @@ fun CourseDetailScreen(
     onOpenDocument: (String) -> Unit,
     onOpenAsk: (courseName: String) -> Unit,
 ) {
+    val actions = LocalAppActions.current
     val viewModel = koinViewModel<CourseDetailViewModel>(key = "course-$courseId") { parametersOf(courseId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
@@ -209,7 +211,12 @@ fun CourseDetailScreen(
         CourseFormDialog(
             initial = course,
             error = error,
-            onSave = { name, semester -> viewModel.updateCourse(course.id, name, semester) { editing = false } },
+            onSave = { name, semester ->
+                viewModel.updateCourse(course.id, name, semester) {
+                    editing = false
+                    actions.showMessage("Mata kuliah disimpan")
+                }
+            },
             onDismiss = {
                 editing = false
                 viewModel.clearError()
@@ -222,7 +229,10 @@ fun CourseDetailScreen(
             message = "Catatan dan tugas di mata kuliah ini juga akan dihapus.",
             onConfirm = {
                 deleting = false
-                viewModel.deleteCourse(course.id, onBack)
+                viewModel.deleteCourse(course.id) {
+                    actions.showMessage("Mata kuliah dihapus")
+                    onBack()
+                }
             },
             onDismiss = { deleting = false },
         )

@@ -11,9 +11,6 @@ import androidx.compose.ui.unit.dp
 import id.studyflow.ui.components.InfoCard
 
 @Composable
-internal fun NeedsAccount(title: String) = InfoCard(title, "Fitur ini membutuhkan akun dan koneksi internet. Masuk dari menu Pengaturan.")
-
-@Composable
 internal fun NeedsSync(onSync: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         InfoCard("Sinkronkan dulu", "Mata kuliah ini belum tersimpan di server. Sinkronkan agar materi bisa diunggah.")

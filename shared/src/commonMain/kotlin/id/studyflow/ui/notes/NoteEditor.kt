@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import id.studyflow.data.repository.NoteRepository
 import id.studyflow.domain.Limits
+import id.studyflow.ui.LocalAppActions
 import id.studyflow.ui.components.ConfirmDeleteDialog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -108,6 +109,7 @@ class NoteEditorViewModel(private val courseId: String, private val noteId: Stri
 fun NoteEditorScreen(courseId: String, noteId: String?, onDone: () -> Unit) {
     val viewModel = koinViewModel<NoteEditorViewModel>(key = "note-$courseId-$noteId") { parametersOf(courseId, noteId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val actions = LocalAppActions.current
     var confirmDelete by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -124,7 +126,12 @@ fun NoteEditorScreen(courseId: String, noteId: String?, onDone: () -> Unit) {
                         IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, contentDescription = "Hapus catatan") }
                     }
                     TextButton(
-                        onClick = { viewModel.save(onDone) },
+                        onClick = {
+                            viewModel.save {
+                                actions.showMessage("Catatan disimpan")
+                                onDone()
+                            }
+                        },
                         enabled = !state.loading && !state.saving && state.title.isNotBlank(),
                     ) { Text("Simpan") }
                 },
@@ -164,7 +171,10 @@ fun NoteEditorScreen(courseId: String, noteId: String?, onDone: () -> Unit) {
             message = "Catatan ini akan dihapus dari mata kuliah.",
             onConfirm = {
                 confirmDelete = false
-                viewModel.delete(onDone)
+                viewModel.delete {
+                    actions.showMessage("Catatan dihapus")
+                    onDone()
+                }
             },
             onDismiss = { confirmDelete = false },
         )

@@ -34,6 +34,7 @@ import id.studyflow.data.remote.DocumentDto
 import id.studyflow.platform.rememberPdfPicker
 import id.studyflow.ui.components.ConfirmDeleteDialog
 import id.studyflow.ui.components.EmptyState
+import id.studyflow.ui.components.NeedsAccountPanel
 import id.studyflow.ui.study.Label
 import id.studyflow.ui.study.OfflineNote
 import org.koin.compose.koinInject
@@ -45,7 +46,13 @@ fun MaterialsTab(courseId: String, onOpenDocument: (String) -> Unit, modifier: M
     val session = koinInject<SessionManager>()
     val auth by session.state.collectAsStateWithLifecycle()
     if (auth !is AuthState.SignedIn) {
-        Column(modifier.padding(16.dp)) { NeedsAccount("Materi PDF") }
+        Column(modifier.padding(16.dp)) {
+            NeedsAccountPanel(
+                "Materi PDF",
+                "Unggah PDF materi kuliah untuk ditanyakan dan dirangkum.",
+                canSignIn = auth is AuthState.SignedOut,
+            )
+        }
         return
     }
     val viewModel = koinViewModel<MaterialsViewModel>(key = "materials-$courseId") { parametersOf(courseId) }
