@@ -67,3 +67,9 @@ PostgreSQL lokal: image `pgvector/pgvector:pg17` (docker-compose), dipilih agar 
 | Komponen | Versi | Catatan |
 |---|---|---|
 | `org.jlleitschuh.gradle.ktlint` | 14.2.0 | Mendukung Gradle 9. Gaya `intellij_idea` (lihat `.editorconfig`); `ktlint_official` menghasilkan ~1.600 pelanggaran dan terlalu jauh dari gaya kode yang ada. |
+
+## Font
+
+| Aset | Versi | Lisensi | Catatan |
+|---|---|---|---|
+| Plus Jakarta Sans (Tokotype) | 2.7.1 | SIL Open Font License 1.1 (`docs/licenses/PlusJakartaSans-OFL.txt`) | Regular, Medium, SemiBold, Bold di `shared/src/commonMain/composeResources/font/`; dimuat lewat `org.jetbrains.compose.components:components-resources` |

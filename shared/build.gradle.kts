@@ -82,6 +82,7 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.material.icons.core)
             implementation(libs.compose.ui.tooling.preview)
+            implementation(libs.compose.components.resources)
 
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.androidx.lifecycle.runtime.compose)
@@ -136,4 +137,10 @@ dependencies {
 
 room {
     schemaDirectory("$projectDir/schemas")
+}
+
+// Font Plus Jakarta Sans (OFL, lihat docs/licenses) dibundel sebagai Compose Resources.
+compose.resources {
+    packageOfResClass = "id.studyflow.resources"
+    publicResClass = false
 }
