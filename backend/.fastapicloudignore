@@ -1,4 +1,5 @@
 # File yang tidak diunggah oleh `fastapi deploy` (selain yang sudah ada di .gitignore).
+# Migrasi dijalankan dari komputer pemilik, bukan di FastAPI Cloud.
 .env
 .env.*
 .venv/
@@ -8,3 +9,5 @@ scripts/
 docker/
 Dockerfile
 docker-compose*.yml
+migrations/
+alembic.ini
