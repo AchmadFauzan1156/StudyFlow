@@ -21,7 +21,8 @@ android {
         applicationId = "id.studyflow"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
+        // Naikkan setiap rilis agar APK baru bisa dipasang menimpa versi lama.
+        versionCode = 2
         versionName = providers.gradleProperty("studyflow.version").get()
     }
 
