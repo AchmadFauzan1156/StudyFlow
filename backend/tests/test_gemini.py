@@ -144,6 +144,22 @@ def test_wrong_dimension_is_invalid():
         e.embed_query("x")
 
 
+def test_longer_matryoshka_embedding_is_truncated_then_normalized():
+    # gemini-embedding-001 bisa mengembalikan 3072 dimensi jika outputDimensionality diabaikan; awalannya tetap valid (MRL).
+    e, _ = embedder(lambda r: httpx2.Response(200, json={"embeddings": [{"values": [3.0, 4.0, 0.0, 0.0, 9.0, 9.0]}]}))
+    assert e.embed_query("x") == pytest.approx([0.6, 0.8, 0.0, 0.0])
+
+
+def test_dimension_is_requested_in_both_request_formats():
+    # Format baru (embedContentConfig) dan lama (tingkat atas) dikirim bersama agar dimensi selalu terbaca.
+    e, requests = embedder(fake_embeddings)
+    e.embed_documents(["a"], title="RSA")
+    first = json.loads(requests[0].content)["requests"][0]
+    assert first["outputDimensionality"] == 4
+    assert first["taskType"] == "RETRIEVAL_DOCUMENT"
+    assert first["title"] == "RSA"
+
+
 def test_gemini_is_default_with_honest_notice():
     s = Settings(_env_file=None, ai_provider=AIProviderKind.GEMINI, ai_api_key="k",
                  embedding_provider=EmbeddingProviderKind.GEMINI)

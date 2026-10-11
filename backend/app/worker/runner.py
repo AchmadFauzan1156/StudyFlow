@@ -192,7 +192,9 @@ class Worker:
 
         try:
             data = self.storage.get(key)
-            extracted = extract_pages(data, self.settings.document_extract_timeout_seconds)
+            extracted = extract_pages(
+                data, self.settings.document_extract_timeout_seconds, self.settings.document_extract_memory_mb
+            )
         except StorageError:
             with self.session_factory() as session:
                 ai.reschedule(session, job_id, attempt, backoff_seconds(attempt), "storage_unavailable")

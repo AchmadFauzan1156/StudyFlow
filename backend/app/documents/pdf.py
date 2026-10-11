@@ -76,18 +76,39 @@ def _extract_all(data: bytes) -> list[str]:
     return [_normalize(page.extract_text() or "") for page in reader.pages]
 
 
-def _worker(data: bytes, out: "mp.Queue") -> None:
+def _limit_memory(max_memory_mb: int | None) -> None:
+    """Batasi memori proses ekstraksi (Linux/Unix) agar PDF berat gagal sendiri, bukan mematikan container API."""
+    if not max_memory_mb:
+        return
     try:
+        import resource
+    except ImportError:  # Windows (pengembangan lokal): tanpa batas.
+        return
+    limit = max_memory_mb * 1024 * 1024
+    resource.setrlimit(resource.RLIMIT_DATA, (limit, limit))
+
+
+def _worker(data: bytes, out: "mp.Queue", max_memory_mb: int | None = None) -> None:
+    try:
+        _limit_memory(max_memory_mb)
         out.put(("ok", _extract_all(data)))
-    except Exception as exc:  # noqa: BLE001 - dikirim balik ke proses induk sebagai kegagalan
+    except BaseException as exc:  # noqa: BLE001 - termasuk MemoryError; dikirim balik ke proses induk
         out.put(("error", type(exc).__name__))
 
 
-def extract_pages(data: bytes, timeout_seconds: float) -> ExtractedPdf:
-    """Ekstraksi per halaman di proses terpisah dengan batas waktu (PDF berat tidak menggantung worker)."""
+def _result_to_pages(status: str, payload: object) -> list[str]:
+    if status == "ok":
+        return payload  # type: ignore[return-value]
+    if payload == "MemoryError":
+        raise PdfRejected("pdf_too_heavy", "PDF terlalu berat untuk diproses. Pecah menjadi beberapa berkas yang lebih kecil.")
+    raise PdfRejected("pdf_invalid", "PDF rusak atau tidak dapat dibaca")
+
+
+def extract_pages(data: bytes, timeout_seconds: float, max_memory_mb: int | None = None) -> ExtractedPdf:
+    """Ekstraksi per halaman di proses terpisah dengan batas waktu dan memori (PDF berat tidak menggantung worker)."""
     ctx = mp.get_context("spawn")
     out: mp.Queue = ctx.Queue()
-    proc = ctx.Process(target=_worker, args=(data, out), daemon=True)
+    proc = ctx.Process(target=_worker, args=(data, out, max_memory_mb), daemon=True)
     proc.start()
     try:
         status, payload = out.get(timeout=timeout_seconds)
@@ -97,9 +118,7 @@ def extract_pages(data: bytes, timeout_seconds: float) -> ExtractedPdf:
         proc.join(timeout=5)
         if proc.is_alive():
             proc.kill()
-    if status != "ok":
-        raise PdfRejected("pdf_invalid", "PDF rusak atau tidak dapat dibaca")
-    return assess(payload)
+    return assess(_result_to_pages(status, payload))
 
 
 def assess(pages: list[str]) -> ExtractedPdf:

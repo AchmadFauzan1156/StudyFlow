@@ -55,6 +55,31 @@ def test_extraction_runs_in_subprocess_and_detects_scans():
     assert exc.value.code == "pdf_no_text"
 
 
+def test_out_of_memory_in_extractor_is_reported_as_too_heavy(monkeypatch):
+    # Proses anak kehabisan memori (dibatasi agar container tidak ikut mati) -> ditolak dengan pesan jelas.
+    import queue as queue_mod
+
+    from app.documents import pdf
+
+    def boom(data):
+        raise MemoryError
+
+    monkeypatch.setattr(pdf, "_extract_all", boom)
+    out: queue_mod.Queue = queue_mod.Queue()
+    pdf._worker(b"%PDF-", out, None)
+    status, payload = out.get_nowait()
+    with pytest.raises(PdfRejected) as exc:
+        pdf._result_to_pages(status, payload)
+    assert exc.value.code == "pdf_too_heavy"
+
+
+@pytest.mark.skipif(not hasattr(__import__("os"), "fork"), reason="batas memori proses hanya di Linux/Unix")
+def test_extractor_memory_limit_is_enforced():
+    with pytest.raises(PdfRejected) as exc:
+        extract_pages(make_pdf([LONG_PAGE] * 3), timeout_seconds=60, max_memory_mb=8)
+    assert exc.value.code == "pdf_too_heavy"
+
+
 def test_assess_always_warns_about_formulas():
     result = assess([LONG_PAGE])
     assert any("Rumus" in w for w in result.warnings)

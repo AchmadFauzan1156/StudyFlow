@@ -141,9 +141,12 @@ class GeminiEmbedder:
         config: dict[str, Any] = {"taskType": task_type, "outputDimensionality": self.dim}
         if title and task_type == "RETRIEVAL_DOCUMENT":
             config["title"] = title
+        # Konfigurasi dikirim dalam format baru (embedContentConfig) dan lama (tingkat atas, masih diterima):
+        # batchEmbedContents terbukti bisa mengabaikan salah satunya sehingga membalas 3072 dimensi.
         body = {
             "requests": [
-                {"model": f"models/{self.model}", "content": {"parts": [{"text": t}]}, "embedContentConfig": config}
+                {"model": f"models/{self.model}", "content": {"parts": [{"text": t}]}, "embedContentConfig": config,
+                 **config}
                 for t in texts
             ]
         }
@@ -152,6 +155,7 @@ class GeminiEmbedder:
             embeddings = [e["values"] for e in payload["embeddings"]]
         except (KeyError, TypeError) as exc:
             raise ProviderInvalidOutputError("respons embedding tidak dapat dibaca") from exc
-        if len(embeddings) != len(texts) or any(len(v) != self.dim for v in embeddings):
+        if len(embeddings) != len(texts) or any(len(v) < self.dim for v in embeddings):
             raise ProviderInvalidOutputError("jumlah atau dimensi embedding tidak sesuai")
-        return [l2_normalize([float(x) for x in v]) for v in embeddings]
+        # Model Matryoshka: awalan sepanjang dim tetap valid setelah dinormalisasi ulang.
+        return [l2_normalize([float(x) for x in v[:self.dim]]) for v in embeddings]
