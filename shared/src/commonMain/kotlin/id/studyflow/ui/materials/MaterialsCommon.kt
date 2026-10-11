@@ -13,6 +13,7 @@ fun documentErrorMessage(code: String?): String = when (code) {
     "pdf_encrypted" -> "PDF terkunci password."
     "pdf_invalid" -> "PDF rusak atau tidak dapat dibaca."
     "extract_timeout" -> "Ekstraksi teks terlalu lama. Coba PDF yang lebih kecil."
+    "pdf_too_heavy" -> "PDF terlalu berat untuk diproses server. Pecah menjadi beberapa berkas yang lebih kecil."
     "provider_unavailable" -> "Layanan embedding sedang sibuk. Kuota tidak dihitung; unggah ulang nanti."
     "invalid_output", "provider_rejected" -> "Pemrosesan gagal di layanan AI. Unggah ulang nanti."
     else -> "Pemrosesan gagal."
