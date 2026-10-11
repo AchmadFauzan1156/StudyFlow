@@ -13,10 +13,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -53,6 +56,9 @@ import id.studyflow.domain.toEpochMillis
 import id.studyflow.domain.toLocalDateTime
 import id.studyflow.ui.LocalAppActions
 import id.studyflow.ui.components.ConfirmDeleteDialog
+import id.studyflow.ui.components.heading
+import id.studyflow.ui.theme.ContentWidth
+import id.studyflow.ui.theme.Spacing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -172,21 +178,19 @@ fun TaskEditorScreen(courseId: String, taskId: String?, onDone: () -> Unit) {
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (state.isNew) "Tugas baru" else "Ubah tugas") },
+                title = { Text(if (state.isNew) "Tugas baru" else "Ubah tugas", modifier = Modifier.heading()) },
                 navigationIcon = {
                     IconButton(onClick = onDone) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali tanpa menyimpan")
                     }
                 },
                 actions = {
-                    if (!state.isNew) {
-                        IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, contentDescription = "Hapus tugas") }
-                    }
-                    TextButton(
+                    Button(
                         onClick = {
                             viewModel.save {
                                 actions.showMessage("Tugas disimpan")
@@ -194,14 +198,32 @@ fun TaskEditorScreen(courseId: String, taskId: String?, onDone: () -> Unit) {
                             }
                         },
                         enabled = !state.loading && !state.saving && state.title.isNotBlank(),
+                        modifier = Modifier.padding(horizontal = Spacing.sm),
                     ) { Text("Simpan") }
+                    if (!state.isNew) {
+                        // Hapus ada di menu agar tidak bersebelahan langsung dengan tombol Simpan.
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "Opsi lain")
+                            }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("Hapus tugas", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        menuOpen = false
+                                        confirmDelete = true
+                                    },
+                                )
+                            }
+                        }
+                    }
                 },
             )
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
             Column(
-                Modifier.widthIn(max = 840.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+                Modifier.widthIn(max = ContentWidth.form).fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 OutlinedTextField(
