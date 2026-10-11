@@ -5,6 +5,8 @@ import id.studyflow.data.repository.TaskInput
 import id.studyflow.domain.TaskStatus
 import id.studyflow.ui.courses.CoursesViewModel
 import id.studyflow.ui.dashboard.HomeViewModel
+import id.studyflow.ui.notes.NoteEditorViewModel
+import id.studyflow.ui.progress.ProgressViewModel
 import id.studyflow.ui.tasks.TaskEditorViewModel
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respondError
@@ -18,6 +20,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class ViewModelTest {
@@ -104,5 +107,63 @@ class ViewModelTest {
         val state = vm.state.firstMatching { it.error != null }
         assertFalse(state.saving)
         assertEquals(emptyList(), device.tasks.observeAll().first())
+    }
+
+    @Test
+    fun noteEditorCreatesNote() = runBlocking<Unit> {
+        val courseId = device.courses.create("Kriptografi", null)
+        val vm = NoteEditorViewModel(courseId, null, device.notes)
+        vm.onTitleChange("RSA")
+        vm.onContentChange("Dua bilangan prima besar.")
+        val saved = CompletableDeferred<Unit>()
+        vm.save { saved.complete(Unit) }
+        withTimeout(5_000) { saved.await() }
+        val note = device.notes.observeByCourse(courseId).firstMatching { it.isNotEmpty() }.single()
+        assertEquals("RSA", note.title)
+        assertEquals("Dua bilangan prima besar.", note.content)
+    }
+
+    @Test
+    fun noteEditorLoadsAndUpdatesExistingNote() = runBlocking<Unit> {
+        val courseId = device.courses.create("Kriptografi", null)
+        val noteId = device.notes.create(courseId, "RSA", "Isi lama")
+        val vm = NoteEditorViewModel(courseId, noteId, device.notes)
+        val loaded = vm.state.firstMatching { !it.loading }
+        assertEquals("RSA", loaded.title)
+        assertEquals("Isi lama", loaded.content)
+        assertFalse(loaded.isNew)
+
+        vm.onContentChange("Isi baru")
+        val saved = CompletableDeferred<Unit>()
+        vm.save { saved.complete(Unit) }
+        withTimeout(5_000) { saved.await() }
+        assertEquals("Isi baru", device.notes.get(noteId)!!.content)
+    }
+
+    @Test
+    fun noteEditorBlankTitleShowsErrorWithoutSaving() = runBlocking<Unit> {
+        val courseId = device.courses.create("Kriptografi", null)
+        val vm = NoteEditorViewModel(courseId, null, device.notes)
+        vm.onContentChange("Tanpa judul")
+        vm.save { error("tidak boleh tersimpan") }
+        val state = vm.state.firstMatching { it.error != null }
+        assertNotNull(state.error)
+        assertFalse(state.saving)
+        assertEquals(emptyList(), device.notes.observeByCourse(courseId).first())
+    }
+
+    @Test
+    fun progressCountsCoursesNotesAndTasks() = runBlocking<Unit> {
+        val courseId = device.courses.create("Basis Data", null)
+        device.notes.create(courseId, "Normalisasi", "")
+        val done = device.tasks.create(courseId, TaskInput("Selesai", "", device.clock.now + 86_400_000, "Asia/Jakarta"))
+        device.tasks.setStatus(done, TaskStatus.DONE)
+        device.tasks.create(courseId, TaskInput("Lewat", "", device.clock.now - 60_000, "Asia/Jakarta"))
+        val vm = ProgressViewModel(device.courses, device.notes, device.tasks, device.clock)
+
+        val state = vm.state.firstMatching { it.taskTotal == 2 && it.taskDone == 1 }
+        assertEquals(1, state.courseCount)
+        assertEquals(1, state.noteCount)
+        assertEquals(1, state.overdue)
     }
 }

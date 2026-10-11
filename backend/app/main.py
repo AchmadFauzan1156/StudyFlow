@@ -19,7 +19,19 @@ logger = logging.getLogger("studyflow.api")
 WORKER_STOP_TIMEOUT_SECONDS = 10.0
 
 
+def _configure_logging() -> None:
+    """Uvicorn hanya mengonfigurasi lognya sendiri; pasang handler untuk logger aplikasi sekali saja."""
+    package_logger = logging.getLogger("studyflow")
+    if not package_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        package_logger.addHandler(handler)
+        package_logger.setLevel(logging.INFO)
+        package_logger.propagate = False
+
+
 def create_app(worker_factory: Callable[[Settings], Worker | None] = build_worker) -> FastAPI:
+    _configure_logging()
     settings = get_settings()
 
     @asynccontextmanager
@@ -27,7 +39,12 @@ def create_app(worker_factory: Callable[[Settings], Worker | None] = build_worke
         # Mode tertanam (STUDYFLOW_EMBEDDED_WORKER): worker berjalan sebagai thread di proses API.
         stop = threading.Event()
         if settings.embedded_worker:
-            worker = worker_factory(settings)
+            try:
+                worker = worker_factory(settings)
+            except Exception:
+                # Mis. format STUDYFLOW_DATABASE_URL salah: API tetap hidup, hanya worker yang tidak jalan.
+                logger.exception("Gagal membangun worker tertanam")
+                worker = None
             if worker is None:
                 logger.error("Worker tertanam tidak dijalankan; job AI akan menunggu.")
             else:

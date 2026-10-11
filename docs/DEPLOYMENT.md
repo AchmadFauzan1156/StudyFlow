@@ -5,7 +5,7 @@ Panduan ini tidak menjalankan deployment berbayar apa pun. Semua langkah dikerja
 ## 1. Supabase
 
 1. Buat proyek Supabase.
-2. **Auth**: aktifkan provider Email/Password. Konfirmasi email boleh aktif; aplikasi menampilkan "cek email" bila perlu.
+2. **Auth**: aktifkan provider Email/Password. Konfirmasi email boleh aktif; aplikasi menampilkan "cek email" bila perlu. Tanpa SMTP sendiri, email bawaan Supabase hanya mengirim beberapa email per jam, sehingga pendaftaran berikutnya gagal dengan "email rate limit exceeded". Untuk deploy gratis, matikan **Confirm email** (Authentication → Sign In / Providers → Email) atau pasang SMTP sendiri.
 3. **API Keys**:
    - **Publishable key** → aplikasi (`local.properties`: `studyflow.supabase.publishableKey`).
    - **Secret/service-role key** → hanya backend (`STUDYFLOW_SUPABASE_SERVICE_KEY`), dipakai untuk Storage.
@@ -76,6 +76,7 @@ Batasan paket gratis:
 - App di-*scale to zero* saat sepi; permintaan pertama sesudahnya lebih lambat. Job AI yang tertunda diproses saat app aktif lagi.
 - Proyek Supabase Free di-*pause* setelah sekitar seminggu tanpa aktivitas; aktifkan lagi dari dashboard (Resume).
 - Kuota Gemini free tier per proyek terlihat di Google AI Studio; backend juga membatasi pemakaian per pengguna per hari.
+- Jeda antar-panggilan AI (`STUDYFLOW_AI_MIN_INTERVAL_SECONDS`) dihitung per proses. Jika platform menjalankan beberapa replika, masing-masing punya worker sendiri sehingga laju ke Gemini bisa berlipat; balasan 429 membuat job dijadwalkan ulang, bukan rusak. Untuk menekannya, batasi replika maksimum ke 1 di pengaturan scaling app.
 
 `render.yaml` tetap tersedia sebagai alternatif (Render Free, satu web service Docker dengan `/app/start.sh`), tetapi Render meminta verifikasi kartu kredit.
 
