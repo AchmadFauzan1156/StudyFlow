@@ -29,11 +29,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import id.studyflow.ui.account.ImportLocalDialog
 import id.studyflow.ui.navigation.BottomBar
 import id.studyflow.ui.navigation.COURSES_INDEX
+import id.studyflow.ui.navigation.NavRail
 import id.studyflow.ui.navigation.Sidebar
 import id.studyflow.ui.navigation.StudyFlowNavHost
 import id.studyflow.ui.navigation.isInHierarchy
@@ -45,8 +47,11 @@ import id.studyflow.ui.theme.StudyFlowTheme
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
-/** Lebar minimum (dp) untuk berpindah dari bottom navigation ke sidebar. */
-private const val WIDE_LAYOUT_MIN_DP = 600
+/** Lebar minimum (dp) untuk berpindah dari bottom navigation ke navigation rail. */
+private const val MEDIUM_LAYOUT_MIN_DP = 600
+
+/** Lebar minimum (dp) untuk sidebar lengkap dengan daftar mata kuliah. */
+private const val EXPANDED_LAYOUT_MIN_DP = 840
 
 private const val SNACKBAR_MAX_WIDTH_DP = 480
 
@@ -96,7 +101,7 @@ fun App() {
                     .focusable()
                     .topLevelShortcuts(selectTopLevel),
             ) {
-                if (maxWidth >= WIDE_LAYOUT_MIN_DP.dp) {
+                if (maxWidth >= EXPANDED_LAYOUT_MIN_DP.dp) {
                     Row(Modifier.fillMaxSize()) {
                         Sidebar(
                             selectedIndex = selectedIndex,
@@ -108,14 +113,13 @@ fun App() {
                             },
                         )
                         VerticalDivider()
-                        Box(Modifier.weight(1f)) {
-                            StudyFlowNavHost(navController, Modifier.fillMaxSize())
-                            // Kiri bawah dan dibatasi lebarnya agar tidak menutupi FAB di kanan bawah.
-                            SnackbarHost(
-                                snackbar,
-                                Modifier.align(Alignment.BottomStart).padding(24.dp).widthIn(max = SNACKBAR_MAX_WIDTH_DP.dp),
-                            )
-                        }
+                        ContentWithSnackbar(navController, snackbar, Modifier.weight(1f))
+                    }
+                } else if (maxWidth >= MEDIUM_LAYOUT_MIN_DP.dp) {
+                    Row(Modifier.fillMaxSize()) {
+                        NavRail(selectedIndex, selectTopLevel)
+                        VerticalDivider()
+                        ContentWithSnackbar(navController, snackbar, Modifier.weight(1f))
                     }
                 } else {
                     Scaffold(
@@ -128,5 +132,17 @@ fun App() {
                 }
             }
         }
+    }
+}
+
+/** Area konten layar lebar/menengah; Snackbar di kiri bawah dan dibatasi lebarnya agar tidak menutupi FAB di kanan bawah. */
+@Composable
+private fun ContentWithSnackbar(navController: NavHostController, snackbar: SnackbarHostState, modifier: Modifier) {
+    Box(modifier) {
+        StudyFlowNavHost(navController, Modifier.fillMaxSize())
+        SnackbarHost(
+            snackbar,
+            Modifier.align(Alignment.BottomStart).padding(24.dp).widthIn(max = SNACKBAR_MAX_WIDTH_DP.dp),
+        )
     }
 }

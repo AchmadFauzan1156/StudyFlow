@@ -62,7 +62,7 @@ internal fun Sidebar(
     onOpenCourse: (courseId: String) -> Unit,
 ) {
     PermanentDrawerSheet(
-        modifier = Modifier.width(272.dp).fillMaxHeight().testTag("sidebar"),
+        modifier = Modifier.width(256.dp).fillMaxHeight().testTag("sidebar"),
         drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Row(

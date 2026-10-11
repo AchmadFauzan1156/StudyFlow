@@ -123,10 +123,16 @@ class AppFlowTest {
     }
 
     @Test
-    fun sidebarFrom600dpAndBottomBarBelow() = runComposeUiTest {
-        var width by mutableIntStateOf(600)
+    fun navigationAdaptsToWidth() = runComposeUiTest {
+        var width by mutableIntStateOf(840)
         setApp { width }
         onNodeWithTag("sidebar").assertIsDisplayed()
+        width = 839
+        waitForIdle()
+        onNodeWithTag("navRail").assertIsDisplayed()
+        width = 600
+        waitForIdle()
+        onNodeWithTag("navRail").assertIsDisplayed()
         width = 599
         waitForIdle()
         onNodeWithTag("bottomBar").assertIsDisplayed()
