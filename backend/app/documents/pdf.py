@@ -1,5 +1,6 @@
 """Validasi dan ekstraksi PDF berbasis teks (pypdf). OCR untuk PDF scan berada di luar scope."""
 
+import gc
 import io
 import multiprocessing as mp
 import os
@@ -76,7 +77,21 @@ def _extract_all(data: bytes) -> list[str]:
     reader = PdfReader(io.BytesIO(data))
     if reader.is_encrypted:
         reader.decrypt("")
-    return [_normalize(page.extract_text() or "") for page in reader.pages]
+    pages = []
+    for page in reader.pages:
+        try:
+            text = page.extract_text() or ""
+        except (PdfReadError, ValueError, KeyError, TypeError, AttributeError):
+            # Content stream satu halaman rusak: halaman dilewati (tercatat di peringatan "tanpa teks"),
+            # bukan menolak seluruh PDF.
+            text = ""
+        pages.append(_normalize(text))
+        # pypdf menyimpan semua objek yang sudah dibaca (font, resource) di cache reader. Pada slide presentasi
+        # cache ini menumpuk ~20 MB per halaman; dikosongkan per halaman (teks hasil tetap sama, diuji pada
+        # PDF nyata) agar puncak memori turun dari ratusan MB ke <100 MB.
+        reader.resolved_objects.clear()
+        gc.collect()
+    return pages
 
 
 def _current_address_space() -> int:

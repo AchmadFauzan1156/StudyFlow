@@ -76,8 +76,8 @@ def test_out_of_memory_in_extractor_is_reported_as_too_heavy(monkeypatch):
 @pytest.mark.skipif(not hasattr(__import__("os"), "fork"), reason="batas memori proses hanya di Linux/Unix")
 def test_extractor_memory_limit_is_enforced():
     with pytest.raises(PdfRejected) as exc:
-        # PDF besar perlu jauh lebih dari 8 MB alokasi baru di atas pemakaian awal proses anak.
-        extract_pages(make_pdf([LONG_PAGE * 8] * 400), timeout_seconds=120, max_memory_mb=8)
+        # Halaman dengan teks sangat panjang perlu jauh lebih dari 8 MB alokasi baru di atas pemakaian awal.
+        extract_pages(make_pdf([LONG_PAGE * 2000] * 2), timeout_seconds=120, max_memory_mb=8)
     assert exc.value.code == "pdf_too_heavy"
 
 
@@ -102,6 +102,57 @@ def test_memory_limit_is_headroom_above_current_usage():
     out = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=60, check=False)
     assert out.returncode == 0, out.stderr
     assert out.stdout.strip() == "big-rejected"
+
+
+def test_extraction_releases_object_cache_between_pages(monkeypatch):
+    # pypdf menyimpan setiap objek yang sudah dibaca (font, resource) di reader; untuk slide presentasi cache ini
+    # menumpuk ~20 MB per halaman (PDF 1 MB butuh >600 MB). Cache harus dikosongkan setelah tiap halaman.
+    from app.documents import pdf
+
+    readers = []
+    cache_sizes = []
+
+    class SpyReader(pdf.PdfReader):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            readers.append(self)
+
+    monkeypatch.setattr(pdf, "PdfReader", SpyReader)
+    original = pdf._normalize
+
+    def spy_normalize(text):
+        cache_sizes.append(len(readers[-1].resolved_objects))
+        return original(text)
+
+    monkeypatch.setattr(pdf, "_normalize", spy_normalize)
+    pages = pdf._extract_all(make_pdf([LONG_PAGE] * 3))
+    assert len(pages) == 3
+    # Saat halaman berikutnya diproses, objek halaman sebelumnya sudah tidak tersimpan di cache.
+    assert len(readers[-1].resolved_objects) <= max(cache_sizes[0], 1)
+    assert cache_sizes[1] <= cache_sizes[0] and cache_sizes[2] <= cache_sizes[0]
+
+
+def test_unreadable_page_is_skipped_not_whole_pdf(monkeypatch):
+    # Slide nyata: 2 dari 29 halaman punya content stream rusak; halaman lain tetap harus bisa dipakai.
+    from pypdf import PageObject
+    from pypdf.errors import PdfReadError
+
+    from app.documents import pdf
+
+    original = PageObject.extract_text
+    calls = {"n": 0}
+
+    def flaky(self, *args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise PdfReadError("Invalid Elementary Object starting with b'\\x00'")
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(PageObject, "extract_text", flaky)
+    pages = pdf._extract_all(make_pdf([LONG_PAGE] * 3))
+    assert pages[1] == ""
+    assert pages[0] and pages[2]
+    assert any("2" in w for w in assess(pages).warnings if "tanpa teks" in w)
 
 
 def test_normal_pdf_fits_in_default_memory_limit():
