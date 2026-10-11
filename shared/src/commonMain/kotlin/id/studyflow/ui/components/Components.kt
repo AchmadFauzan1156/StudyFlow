@@ -257,6 +257,8 @@ fun TaskRow(
             scope.launch { swipeState.reset() }
         },
         backgroundContent = {
+            // Hanya digambar saat digeser, agar tidak membayang di sudut baris dalam keadaan diam.
+            if (swipeState.dismissDirection == SwipeToDismissBoxValue.Settled) return@SwipeToDismissBox
             Row(
                 Modifier.fillMaxSize()
                     .background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.medium)

@@ -129,7 +129,7 @@ fun CoursesScreen(onOpenCourse: (String) -> Unit) {
                 )
                 // Satu kolom di HP; otomatis menjadi beberapa kolom saat layar cukup lebar.
                 else -> LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 320.dp),
+                    columns = GridCells.Adaptive(minSize = 400.dp),
                     modifier = Modifier.widthIn(max = ContentWidth.wide).fillMaxWidth(),
                     contentPadding = PaddingValues(start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(Spacing.sm),

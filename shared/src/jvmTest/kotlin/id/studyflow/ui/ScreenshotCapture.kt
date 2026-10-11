@@ -64,6 +64,7 @@ class ScreenshotCapture {
 
     private val phone = Layout("phone", 412, 892)
     private val desktop = Layout("desktop", 1280, 800)
+    private val tablet = Layout("tablet", 700, 1000)
 
     private val lifecycleOwner = object : LifecycleOwner {
         override val lifecycle = LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
@@ -223,5 +224,6 @@ class ScreenshotCapture {
             capture(layout, ThemeMode.DARK, full = false)
             captureEmpty(layout)
         }
+        capture(tablet, ThemeMode.LIGHT, full = false)
     }
 }
