@@ -1,5 +1,7 @@
 package id.studyflow.ui.courses
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,13 +15,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,8 +52,12 @@ import id.studyflow.domain.Course
 import id.studyflow.domain.Limits
 import id.studyflow.ui.LocalAppActions
 import id.studyflow.ui.components.ConfirmDeleteDialog
+import id.studyflow.ui.components.CourseAvatar
 import id.studyflow.ui.components.EmptyState
-import id.studyflow.ui.components.InitialAvatar
+import id.studyflow.ui.components.heading
+import id.studyflow.ui.theme.ContentWidth
+import id.studyflow.ui.theme.Spacing
+import id.studyflow.ui.theme.tabularNumbers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -103,7 +108,7 @@ fun CoursesScreen(onOpenCourse: (String) -> Unit) {
     var deleting by remember { mutableStateOf<Course?>(null) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Mata Kuliah") }) },
+        topBar = { TopAppBar(title = { Text("Mata Kuliah", Modifier.heading()) }) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { creating = true },
@@ -120,18 +125,18 @@ fun CoursesScreen(onOpenCourse: (String) -> Unit) {
                     title = "Belum ada mata kuliah",
                     message = "Tambahkan mata kuliah pertama, misalnya Kriptografi.",
                     action = { Button(onClick = { creating = true }) { Text("Tambah mata kuliah") } },
-                    icon = Icons.Outlined.Create,
+                    icon = Icons.AutoMirrored.Outlined.List,
                 )
                 // Satu kolom di HP; otomatis menjadi beberapa kolom saat layar cukup lebar.
                 else -> LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 320.dp),
-                    modifier = Modifier.widthIn(max = 1160.dp).fillMaxWidth(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.widthIn(max = ContentWidth.wide).fillMaxWidth(),
+                    contentPadding = PaddingValues(start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = 96.dp),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                 ) {
                     items(list, key = { it.id }) { course ->
-                        CourseCard(
+                        CourseRow(
                             course = course,
                             onClick = { onOpenCourse(course.id) },
                             onEdit = { editing = course },
@@ -176,43 +181,54 @@ fun CoursesScreen(onOpenCourse: (String) -> Unit) {
     }
 }
 
+/** Metadata ringkas; jumlah nol tidak ditulis agar baris tidak penuh angka "0". */
+internal fun courseMeta(course: Course): String {
+    val counts = listOfNotNull(
+        course.noteCount.takeIf { it > 0 }?.let { "$it catatan" },
+        course.openTaskCount.takeIf { it > 0 }?.let { "$it tugas terbuka" },
+    ).ifEmpty { listOf("Belum ada catatan atau tugas") }
+    return (listOfNotNull(course.semester) + counts).joinToString(" · ")
+}
+
+/** Baris mata kuliah bergaris tipis, dengan avatar berwarna penanda mata kuliahnya. */
 @Composable
-private fun CourseCard(course: Course, onClick: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+private fun CourseRow(course: Course, onClick: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
     var menuOpen by remember { mutableStateOf(false) }
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth().pointerHoverIcon(PointerIcon.Hand),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    Row(
+        modifier.fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
+            .clickable(onClick = onClick)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .padding(start = Spacing.lg, top = Spacing.md, bottom = Spacing.md, end = Spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        Row(
-            Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            InitialAvatar(course.name)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(course.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                val meta = listOfNotNull(
-                    course.semester,
-                    "${course.noteCount} catatan",
-                    "${course.openTaskCount} tugas terbuka",
-                ).joinToString(" · ")
-                Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        CourseAvatar(course.id, course.name)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            Text(course.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                courseMeta(course),
+                style = MaterialTheme.typography.bodySmall.tabularNumbers(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "Opsi ${course.name}")
             }
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "Opsi ${course.name}")
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(text = { Text("Ubah") }, onClick = {
-                        menuOpen = false
-                        onEdit()
-                    })
-                    DropdownMenuItem(text = { Text("Hapus") }, onClick = {
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(text = { Text("Ubah") }, onClick = {
+                    menuOpen = false
+                    onEdit()
+                })
+                DropdownMenuItem(
+                    text = { Text("Hapus", color = MaterialTheme.colorScheme.error) },
+                    onClick = {
                         menuOpen = false
                         onDelete()
-                    })
-                }
+                    },
+                )
             }
         }
     }
