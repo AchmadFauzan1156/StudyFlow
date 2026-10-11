@@ -13,6 +13,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
@@ -221,6 +222,27 @@ class AppFlowTest {
         ui { onAllNodes(hasSetTextAction())[0].performTextInput("RSA") }
         ui { onNode(hasText("Simpan")).performClick() }
         waitForText("Catatan disimpan")
+        settle()
+    }
+
+    @Test
+    fun sidebarCourseListOpensByClickAndStaysOpen() = runComposeUiTest {
+        showApp()
+        ui { onNode(hasText("Mata Kuliah") and isSelectable()).performClick() }
+        ui { onNode(hasText("Tambah mata kuliah")).performClick() }
+        ui { onAllNodes(hasSetTextAction())[0].performTextInput("Kriptografi") }
+        ui { onNode(hasText("Simpan")).performClick() }
+        waitForText("Kriptografi")
+        ui { onNode(hasText("Beranda") and isSelectable()).performClick() }
+        onAllNodes(hasText("Kriptografi")).assertCountEquals(0)
+
+        ui { onNode(hasContentDescription("Tampilkan daftar mata kuliah")).performClick() }
+        waitForText("Kriptografi")
+        mainClock.advanceTimeBy(2_000)
+        waitForIdle()
+        onAllNodes(hasText("Kriptografi")).assertCountEquals(1)
+        ui { onNode(hasContentDescription("Sembunyikan daftar mata kuliah")).performClick() }
+        waitUntil(timeoutMillis = 5_000) { onAllNodes(hasText("Kriptografi")).fetchSemanticsNodes().isEmpty() }
         settle()
     }
 }
