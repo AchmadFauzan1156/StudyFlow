@@ -76,13 +76,36 @@ def test_out_of_memory_in_extractor_is_reported_as_too_heavy(monkeypatch):
 @pytest.mark.skipif(not hasattr(__import__("os"), "fork"), reason="batas memori proses hanya di Linux/Unix")
 def test_extractor_memory_limit_is_enforced():
     with pytest.raises(PdfRejected) as exc:
-        # PDF besar perlu alokasi baru; batas 8 MB berada di bawah pemakaian dasar interpreter.
-        extract_pages(make_pdf([LONG_PAGE * 4] * 100), timeout_seconds=60, max_memory_mb=8)
+        # PDF besar perlu jauh lebih dari 8 MB alokasi baru di atas pemakaian awal proses anak.
+        extract_pages(make_pdf([LONG_PAGE * 8] * 400), timeout_seconds=120, max_memory_mb=8)
     assert exc.value.code == "pdf_too_heavy"
 
 
+@pytest.mark.skipif(not hasattr(__import__("os"), "fork"), reason="batas memori proses hanya di Linux/Unix")
+def test_memory_limit_is_headroom_above_current_usage():
+    # Di server, proses ekstraksi sudah memakai ratusan MB memori virtual sebelum mulai; batas mutlak membuat
+    # PDF biasa ikut ditolak. Batas harus berupa ruang tambahan di atas pemakaian awal, dan tetap ditegakkan.
+    import subprocess
+    import sys
+
+    script = (
+        "from app.documents.pdf import _limit_memory\n"
+        "baseline = bytearray(300 * 1024 * 1024)\n"
+        "_limit_memory(64)\n"
+        "small = bytearray(20 * 1024 * 1024)\n"
+        "try:\n"
+        "    big = bytearray(128 * 1024 * 1024)\n"
+        "    print('big-allowed')\n"
+        "except MemoryError:\n"
+        "    print('big-rejected')\n"
+    )
+    out = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=60, check=False)
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip() == "big-rejected"
+
+
 def test_normal_pdf_fits_in_default_memory_limit():
-    # 100 halaman teks penuh harus tetap lolos dengan batas bawaan (200 MB).
+    # 100 halaman teks penuh harus tetap lolos dengan ruang tambahan bawaan (200 MB).
     page = ("RSA memakai dua bilangan prima p dan q untuk membentuk modulus n. " * 40).strip()
     extracted = extract_pages(make_pdf([page] * 100), timeout_seconds=120, max_memory_mb=200)
     assert len(extracted.pages) == 100
