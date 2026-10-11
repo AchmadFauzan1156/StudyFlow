@@ -4,11 +4,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -48,6 +48,7 @@ import androidx.navigation.toRoute
 import id.studyflow.domain.Course
 import id.studyflow.ui.CourseDetailRoute
 import id.studyflow.ui.courses.CoursesViewModel
+import id.studyflow.ui.theme.StudyFlowMark
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -70,12 +71,7 @@ internal fun Sidebar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                Modifier.size(36.dp).background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("S", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimary)
-            }
+            StudyFlowMark(Modifier.height(28.dp))
             Text("StudyFlow", style = MaterialTheme.typography.titleLarge)
         }
         val courses by koinViewModel<CoursesViewModel>().courses.collectAsStateWithLifecycle()

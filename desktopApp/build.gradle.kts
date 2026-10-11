@@ -44,6 +44,8 @@ compose.desktop {
                 perUserInstall = true
                 // Tetap sama di setiap versi agar installer baru menggantikan versi lama.
                 upgradeUuid = "41f47992-8c7c-47a4-885e-e3dd2dcc99db"
+                // Dibuat oleh docs/brand/build_brand.py (16-256 px).
+                iconFile.set(project.file("icons/studyflow.ico"))
             }
         }
     }

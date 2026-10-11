@@ -8,6 +8,7 @@ import androidx.compose.ui.window.rememberWindowState
 import id.studyflow.di.desktopPlatformModule
 import id.studyflow.di.initKoin
 import id.studyflow.ui.App
+import id.studyflow.ui.theme.studyFlowAppIcon
 import java.util.Locale
 
 fun main() {
@@ -18,6 +19,7 @@ fun main() {
         Window(
             onCloseRequest = ::exitApplication,
             title = "StudyFlow",
+            icon = studyFlowAppIcon(),
             state = rememberWindowState(size = DpSize(1120.dp, 760.dp)),
         ) {
             window.minimumSize = java.awt.Dimension(420, 560)

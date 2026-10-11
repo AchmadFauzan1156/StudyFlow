@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dibuat oleh docs/brand/build_brand.py; jangan diedit manual. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M24 0 H84 A24 24 0 0 1 108 24 V84 A24 24 0 0 1 84 108 H24 A24 24 0 0 1 0 84 V24 A24 24 0 0 1 24 0 Z" android:fillColor="#0F766E"/>
+    <group android:scaleX="0.78" android:scaleY="0.78" android:translateX="11.490" android:translateY="11.880">
+        <path android:pathData="M52 37 H30 A8.5 8.5 0 0 0 30 54 H42 A8.5 8.5 0 0 1 42 71 H20" android:strokeColor="#FFFFFF" android:strokeWidth="12" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000"/>
+        <path android:pathData="M67 31 H67 A5 5 0 0 1 72 36 V72 A5 5 0 0 1 67 77 H67 A5 5 0 0 1 62 72 V36 A5 5 0 0 1 67 31 Z" android:fillColor="#5EEAD4"/>
+        <path android:pathData="M82 31 H89 A6 6 0 0 1 95 37 V37 A6 6 0 0 1 89 43 H82 A6 6 0 0 1 76 37 V37 A6 6 0 0 1 82 31 Z" android:fillColor="#FFFFFF"/>
+        <path android:pathData="M82 48 H86 A6 6 0 0 1 92 54 V54 A6 6 0 0 1 86 60 H82 A6 6 0 0 1 76 54 V54 A6 6 0 0 1 82 48 Z" android:fillColor="#FFFFFF"/>
+    </group>
+</vector>
