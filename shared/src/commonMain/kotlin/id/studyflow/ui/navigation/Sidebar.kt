@@ -3,15 +3,12 @@ package id.studyflow.ui.navigation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.PermanentDrawerSheet
@@ -31,7 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,13 +48,13 @@ import androidx.navigation.toRoute
 import id.studyflow.domain.Course
 import id.studyflow.ui.CourseDetailRoute
 import id.studyflow.ui.courses.CoursesViewModel
-import kotlinx.coroutines.delay
+import id.studyflow.ui.theme.StudyFlowMark
 import org.koin.compose.viewmodel.koinViewModel
 
-/** Jeda sebelum daftar mata kuliah menutup, agar tidak berkedip saat kursor lewat sekilas di luar. */
-private const val HOVER_CLOSE_DELAY_MS = 250L
-
-/** Sidebar layar lebar: menu utama, dan daftar mata kuliah yang terbuka selama kursor berada di menu Mata Kuliah. */
+/**
+ * Sidebar layar lebar: menu utama dan daftar mata kuliah. Daftar dibuka/ditutup lewat tombol panah (bisa dengan
+ * mouse, sentuhan, atau keyboard) dan terbuka sendiri saat sebuah mata kuliah sedang dibuka.
+ */
 @Composable
 internal fun Sidebar(
     selectedIndex: Int,
@@ -65,7 +63,7 @@ internal fun Sidebar(
     onOpenCourse: (courseId: String) -> Unit,
 ) {
     PermanentDrawerSheet(
-        modifier = Modifier.width(272.dp).fillMaxHeight().testTag("sidebar"),
+        modifier = Modifier.width(256.dp).fillMaxHeight().testTag("sidebar"),
         drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Row(
@@ -73,46 +71,42 @@ internal fun Sidebar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                Modifier.size(36.dp).background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("S", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimary)
-            }
+            StudyFlowMark(Modifier.height(28.dp))
             Text("StudyFlow", style = MaterialTheme.typography.titleLarge)
         }
         val courses by koinViewModel<CoursesViewModel>().courses.collectAsStateWithLifecycle()
         // Mata kuliah yang sedang dibuka, agar tetap tersorot saat masuk ke catatan atau tugasnya.
         var openCourseId by rememberSaveable { mutableStateOf<String?>(null) }
-        var coursesExpanded by remember { mutableStateOf(false) }
+        var coursesExpanded by rememberSaveable { mutableStateOf(false) }
         LaunchedEffect(backStackEntry) {
             val entry = backStackEntry ?: return@LaunchedEffect
             when {
-                entry.destination.hasRoute(CourseDetailRoute::class) ->
+                entry.destination.hasRoute(CourseDetailRoute::class) -> {
                     openCourseId = entry.toRoute<CourseDetailRoute>().courseId
+                    coursesExpanded = true
+                }
                 topLevels.any { entry.destination.hasRoute(it.routeClass) } -> openCourseId = null
             }
         }
-        // Daftar terbuka selama kursor berada di menu atau daftarnya, dan menutup saat kursor pergi.
-        val coursesHover = remember { MutableInteractionSource() }
-        val coursesHovered by coursesHover.collectIsHoveredAsState()
-        LaunchedEffect(coursesHovered) {
-            if (!coursesHovered) delay(HOVER_CLOSE_DELAY_MS)
-            coursesExpanded = coursesHovered
-        }
         topLevels.forEachIndexed { index, item ->
             val isCourses = index == COURSES_INDEX
-            Column(if (isCourses) Modifier.hoverable(coursesHover) else Modifier) {
+            Column {
                 NavigationDrawerItem(
                     label = { Text(item.label, maxLines = 1, softWrap = false) },
                     icon = { Icon(item.icon, contentDescription = null) },
                     badge = {
                         if (isCourses) {
-                            Icon(
-                                if (coursesExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                                contentDescription = if (coursesExpanded) "Tutup daftar" else "Buka daftar",
-                                modifier = Modifier.size(18.dp),
-                            )
+                            IconButton(onClick = { coursesExpanded = !coursesExpanded }) {
+                                Icon(
+                                    if (coursesExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                    contentDescription = if (coursesExpanded) {
+                                        "Sembunyikan daftar mata kuliah"
+                                    } else {
+                                        "Tampilkan daftar mata kuliah"
+                                    },
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
                         }
                     },
                     // Saat daftar terbuka, sorotan pindah ke mata kuliah yang sedang dibuka.
@@ -161,7 +155,7 @@ private fun CourseSubList(courses: List<Course>, selectedId: String?, onOpen: (S
                 modifier = Modifier.fillMaxWidth()
                     .clip(CircleShape)
                     .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-                    .clickable { onOpen(course.id) }
+                    .clickable(role = Role.Button) { onOpen(course.id) }
                     .pointerHoverIcon(PointerIcon.Hand)
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             )

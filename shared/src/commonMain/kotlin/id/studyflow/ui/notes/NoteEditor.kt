@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -17,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,7 +34,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import id.studyflow.data.repository.NoteRepository
 import id.studyflow.domain.Limits
+import id.studyflow.ui.LocalAppActions
 import id.studyflow.ui.components.ConfirmDeleteDialog
+import id.studyflow.ui.components.heading
+import id.studyflow.ui.theme.ContentWidth
+import id.studyflow.ui.theme.Spacing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -108,32 +114,54 @@ class NoteEditorViewModel(private val courseId: String, private val noteId: Stri
 fun NoteEditorScreen(courseId: String, noteId: String?, onDone: () -> Unit) {
     val viewModel = koinViewModel<NoteEditorViewModel>(key = "note-$courseId-$noteId") { parametersOf(courseId, noteId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val actions = LocalAppActions.current
     var confirmDelete by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (state.isNew) "Catatan baru" else "Ubah catatan") },
+                title = { Text(if (state.isNew) "Catatan baru" else "Ubah catatan", modifier = Modifier.heading()) },
                 navigationIcon = {
                     IconButton(onClick = onDone) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali tanpa menyimpan")
                     }
                 },
                 actions = {
-                    if (!state.isNew) {
-                        IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, contentDescription = "Hapus catatan") }
-                    }
-                    TextButton(
-                        onClick = { viewModel.save(onDone) },
+                    Button(
+                        onClick = {
+                            viewModel.save {
+                                actions.showMessage("Catatan disimpan")
+                                onDone()
+                            }
+                        },
                         enabled = !state.loading && !state.saving && state.title.isNotBlank(),
+                        modifier = Modifier.padding(horizontal = Spacing.sm),
                     ) { Text("Simpan") }
+                    if (!state.isNew) {
+                        // Hapus ada di menu agar tidak bersebelahan langsung dengan tombol Simpan.
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "Opsi lain")
+                            }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("Hapus catatan", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        menuOpen = false
+                                        confirmDelete = true
+                                    },
+                                )
+                            }
+                        }
+                    }
                 },
             )
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
             Column(
-                Modifier.widthIn(max = 840.dp).fillMaxSize().padding(16.dp),
+                Modifier.widthIn(max = ContentWidth.reading).fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 OutlinedTextField(
@@ -164,7 +192,10 @@ fun NoteEditorScreen(courseId: String, noteId: String?, onDone: () -> Unit) {
             message = "Catatan ini akan dihapus dari mata kuliah.",
             onConfirm = {
                 confirmDelete = false
-                viewModel.delete(onDone)
+                viewModel.delete {
+                    actions.showMessage("Catatan dihapus")
+                    onDone()
+                }
             },
             onDismiss = { confirmDelete = false },
         )

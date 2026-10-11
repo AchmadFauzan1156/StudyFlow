@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,10 +16,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -36,6 +38,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -49,12 +54,18 @@ import id.studyflow.domain.Course
 import id.studyflow.domain.Note
 import id.studyflow.domain.StudyTask
 import id.studyflow.domain.TaskStatus
-import id.studyflow.domain.formatDateTime
+import id.studyflow.domain.shortDueLabel
+import id.studyflow.ui.LocalAppActions
 import id.studyflow.ui.components.ConfirmDeleteDialog
+import id.studyflow.ui.components.CourseStripe
 import id.studyflow.ui.components.EmptyState
 import id.studyflow.ui.components.TaskRow
+import id.studyflow.ui.components.heading
 import id.studyflow.ui.materials.MaterialsTab
 import id.studyflow.ui.study.StudyTab
+import id.studyflow.ui.theme.ContentWidth
+import id.studyflow.ui.theme.Spacing
+import id.studyflow.ui.theme.tabularNumbers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -145,25 +156,41 @@ fun CourseDetailScreen(
     onOpenDocument: (String) -> Unit,
     onOpenAsk: (courseName: String) -> Unit,
 ) {
+    val actions = LocalAppActions.current
     val viewModel = koinViewModel<CourseDetailViewModel>(key = "course-$courseId") { parametersOf(courseId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableStateOf(initialTab.coerceIn(tabs.indices)) }
     var editing by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
     val course = state.course
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(course?.name ?: "", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(course?.name ?: "", maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.heading()) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali") }
                 },
                 actions = {
                     if (course != null) {
                         IconButton(onClick = { editing = true }) { Icon(Icons.Filled.Edit, contentDescription = "Ubah mata kuliah") }
-                        IconButton(onClick = { deleting = true }) { Icon(Icons.Filled.Delete, contentDescription = "Hapus mata kuliah") }
+                        // Hapus ada di menu agar tidak bersebelahan langsung dengan aksi lain.
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "Opsi lain")
+                            }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("Hapus mata kuliah", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        menuOpen = false
+                                        deleting = true
+                                    },
+                                )
+                            }
+                        }
                     }
                 },
             )
@@ -188,15 +215,18 @@ fun CourseDetailScreen(
                 EmptyState(title = "Mata kuliah tidak ditemukan", message = "Mungkin sudah dihapus.")
                 return@Column
             }
-            PrimaryTabRow(selectedTabIndex = selectedTab) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
+            // Tab berada di kolom yang sama dengan isinya, agar tidak membentang selebar jendela di desktop.
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                PrimaryTabRow(selectedTabIndex = selectedTab, modifier = Modifier.widthIn(max = ContentWidth.list).fillMaxWidth()) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
+                    }
                 }
             }
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-                val contentModifier = Modifier.widthIn(max = 840.dp).fillMaxWidth()
+                val contentModifier = Modifier.widthIn(max = ContentWidth.list).fillMaxWidth()
                 when (selectedTab) {
-                    TAB_NOTES -> NotesTab(state.notes, state.zone, onOpenNote, contentModifier)
+                    TAB_NOTES -> NotesTab(state.notes, state.nowMillis, state.zone, onOpenNote, contentModifier)
                     1 -> MaterialsTab(courseId, onOpenDocument, contentModifier)
                     TAB_TASKS -> TasksTab(state, onOpenTask, viewModel::toggleDone, contentModifier)
                     else -> StudyTab(state.notes, onOpenStudy, { onOpenAsk(course?.name.orEmpty()) }, contentModifier)
@@ -209,7 +239,12 @@ fun CourseDetailScreen(
         CourseFormDialog(
             initial = course,
             error = error,
-            onSave = { name, semester -> viewModel.updateCourse(course.id, name, semester) { editing = false } },
+            onSave = { name, semester ->
+                viewModel.updateCourse(course.id, name, semester) {
+                    editing = false
+                    actions.showMessage("Mata kuliah disimpan")
+                }
+            },
             onDismiss = {
                 editing = false
                 viewModel.clearError()
@@ -222,46 +257,64 @@ fun CourseDetailScreen(
             message = "Catatan dan tugas di mata kuliah ini juga akan dihapus.",
             onConfirm = {
                 deleting = false
-                viewModel.deleteCourse(course.id, onBack)
+                viewModel.deleteCourse(course.id) {
+                    actions.showMessage("Mata kuliah dihapus")
+                    onBack()
+                }
             },
             onDismiss = { deleting = false },
         )
     }
 }
 
+/** Baris pertama isi catatan yang tidak kosong, untuk pratinjau satu baris di daftar. */
+internal fun notePreview(content: String): String? = content.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }
+
 @Composable
-private fun NotesTab(notes: List<Note>, zone: TimeZone, onOpenNote: (String?) -> Unit, modifier: Modifier) {
+private fun NotesTab(notes: List<Note>, nowMillis: Long, zone: TimeZone, onOpenNote: (String?) -> Unit, modifier: Modifier) {
     if (notes.isEmpty()) {
         EmptyState("Belum ada catatan", "Tulis catatan kuliah pertama untuk mata kuliah ini.", modifier)
         return
     }
     LazyColumn(
         modifier = modifier,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(start = Spacing.lg, end = Spacing.lg, top = Spacing.md, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
-        items(notes, key = { it.id }) { note ->
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable { onOpenNote(note.id) },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(note.title, style = MaterialTheme.typography.titleSmall)
-                    if (note.content.isNotBlank()) {
-                        Text(
-                            note.content,
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    Text(
-                        "Diubah ${formatDateTime(note.updatedAt, zone)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+        items(notes, key = { it.id }) { note -> NoteRow(note, nowMillis, zone, onClick = { onOpenNote(note.id) }) }
+    }
+}
+
+/** Baris catatan: garis warna mata kuliah, judul, baris pertama isi, dan waktu diubah. */
+@Composable
+private fun NoteRow(note: Note, nowMillis: Long, zone: TimeZone, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(onClick = onClick)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .heightIn(min = 64.dp)
+            .padding(horizontal = Spacing.sm, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        CourseStripe(note.courseId)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(note.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            notePreview(note.content)?.let { preview ->
+                Text(
+                    preview,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
+            Text(
+                "Diubah ${shortDueLabel(note.updatedAt, nowMillis, zone)}",
+                style = MaterialTheme.typography.bodySmall.tabularNumbers(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -274,8 +327,8 @@ private fun TasksTab(state: CourseDetailUiState, onOpenTask: (String?) -> Unit, 
     }
     LazyColumn(
         modifier = modifier,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(start = Spacing.lg, end = Spacing.lg, top = Spacing.md, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
         items(state.tasks, key = { it.id }) { task ->
             TaskRow(

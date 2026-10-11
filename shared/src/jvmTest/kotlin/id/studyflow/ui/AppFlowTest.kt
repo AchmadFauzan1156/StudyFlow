@@ -10,8 +10,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
@@ -29,6 +31,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import id.studyflow.config.AppConfig
 import id.studyflow.data.InMemoryDatabases
 import id.studyflow.data.auth.MemorySessionStore
 import id.studyflow.data.auth.SecureSessionStore
@@ -55,14 +58,22 @@ class AppFlowTest {
     private val databases = InMemoryDatabases()
 
     @BeforeTest
-    fun start() {
+    fun start() = startWith(ServerConfig("", "", ""))
+
+    /** Build rilis: server terkonfigurasi tetapi belum masuk; jaringan tetap palsu. */
+    private fun useConfiguredServer() {
+        stopKoin()
+        startWith(ServerConfig("https://contoh.invalid", "kunci-publik", "https://api.contoh.invalid"))
+    }
+
+    private fun startWith(serverConfig: ServerConfig) {
         startKoin {
             modules(
                 module {
                     single<DatabaseFactory> { databases }
                     single<SecureSessionStore> { MemorySessionStore() }
                     single { HttpClient(MockEngine { respondError(HttpStatusCode.ServiceUnavailable) }) { studyFlowDefaults() } }
-                    single { ServerConfig("", "", "") }
+                    single { serverConfig }
                 },
                 dataModule,
                 viewModelModule,
@@ -112,10 +123,16 @@ class AppFlowTest {
     }
 
     @Test
-    fun sidebarFrom600dpAndBottomBarBelow() = runComposeUiTest {
-        var width by mutableIntStateOf(600)
+    fun navigationAdaptsToWidth() = runComposeUiTest {
+        var width by mutableIntStateOf(840)
         setApp { width }
         onNodeWithTag("sidebar").assertIsDisplayed()
+        width = 839
+        waitForIdle()
+        onNodeWithTag("navRail").assertIsDisplayed()
+        width = 600
+        waitForIdle()
+        onNodeWithTag("navRail").assertIsDisplayed()
         width = 599
         waitForIdle()
         onNodeWithTag("bottomBar").assertIsDisplayed()
@@ -150,6 +167,14 @@ class AppFlowTest {
     }
 
     @Test
+    fun settingsShowsBuildVersion() = runComposeUiTest {
+        showApp()
+        ui { onNode(hasText("Pengaturan") and isSelectable()).performClick() }
+        waitForText(AppConfig.appVersion)
+        settle()
+    }
+
+    @Test
     fun ctrlNumberSwitchesTopLevelScreen() = runComposeUiTest {
         showApp()
         waitForIdle()
@@ -158,6 +183,72 @@ class AppFlowTest {
         waitUntil(timeoutMillis = 5_000) { onAllNodes(hasText("Pengaturan")).fetchSemanticsNodes().size >= 2 }
         ui { onRoot().performKeyInput { withKeyDown(Key.CtrlLeft) { pressKey(Key.Two) } } }
         waitForText("Tambah mata kuliah")
+        settle()
+    }
+
+    private fun ComposeUiTest.openStudyTabOfNewCourse() {
+        ui { onNode(hasText("Mata Kuliah") and isSelectable()).performClick() }
+        ui { onNode(hasText("Tambah mata kuliah")).performClick() }
+        ui { onAllNodes(hasSetTextAction())[0].performTextInput("Kriptografi") }
+        ui { onNode(hasText("Simpan")).performClick() }
+        waitForText("Kriptografi")
+        ui { onAllNodes(hasText("Kriptografi"))[0].performClick() }
+        ui { onNode(hasText("Belajar") and isSelectable()).performClick() }
+    }
+
+    @Test
+    fun accountGatedTabOffersSignInWhenServerConfigured() = runComposeUiTest {
+        useConfiguredServer()
+        showApp()
+        openStudyTabOfNewCourse()
+        ui { onNode(hasText("Masuk atau daftar")).performClick() }
+        waitForText("Akun StudyFlow")
+        settle()
+    }
+
+    @Test
+    fun accountGatedTabHasNoSignInWithoutServer() = runComposeUiTest {
+        showApp()
+        openStudyTabOfNewCourse()
+        waitForText("Belajar dengan AI")
+        onAllNodes(hasText("Masuk atau daftar")).assertCountEquals(0)
+        settle()
+    }
+
+    @Test
+    fun savingNoteShowsConfirmation() = runComposeUiTest {
+        showApp()
+        ui { onNode(hasText("Mata Kuliah") and isSelectable()).performClick() }
+        ui { onNode(hasText("Tambah mata kuliah")).performClick() }
+        ui { onAllNodes(hasSetTextAction())[0].performTextInput("Kriptografi") }
+        ui { onNode(hasText("Simpan")).performClick() }
+        waitForText("Mata kuliah disimpan")
+        ui { onAllNodes(hasText("Kriptografi"))[0].performClick() }
+        ui { fab("Catatan").performClick() }
+        ui { onAllNodes(hasSetTextAction())[0].performTextInput("RSA") }
+        ui { onNode(hasText("Simpan")).performClick() }
+        waitForText("Catatan disimpan")
+        settle()
+    }
+
+    @Test
+    fun sidebarCourseListOpensByClickAndStaysOpen() = runComposeUiTest {
+        showApp()
+        ui { onNode(hasText("Mata Kuliah") and isSelectable()).performClick() }
+        ui { onNode(hasText("Tambah mata kuliah")).performClick() }
+        ui { onAllNodes(hasSetTextAction())[0].performTextInput("Kriptografi") }
+        ui { onNode(hasText("Simpan")).performClick() }
+        waitForText("Kriptografi")
+        ui { onNode(hasText("Beranda") and isSelectable()).performClick() }
+        onAllNodes(hasText("Kriptografi")).assertCountEquals(0)
+
+        ui { onNode(hasContentDescription("Tampilkan daftar mata kuliah")).performClick() }
+        waitForText("Kriptografi")
+        mainClock.advanceTimeBy(2_000)
+        waitForIdle()
+        onAllNodes(hasText("Kriptografi")).assertCountEquals(1)
+        ui { onNode(hasContentDescription("Sembunyikan daftar mata kuliah")).performClick() }
+        waitUntil(timeoutMillis = 5_000) { onAllNodes(hasText("Kriptografi")).fetchSemanticsNodes().isEmpty() }
         settle()
     }
 }

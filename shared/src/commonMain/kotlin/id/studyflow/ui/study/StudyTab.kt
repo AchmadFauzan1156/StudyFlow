@@ -21,7 +21,7 @@ import id.studyflow.data.auth.AuthState
 import id.studyflow.data.auth.SessionManager
 import id.studyflow.domain.Note
 import id.studyflow.ui.components.EmptyState
-import id.studyflow.ui.components.InfoCard
+import id.studyflow.ui.components.NeedsAccountPanel
 import org.koin.compose.koinInject
 
 @Composable
@@ -30,9 +30,10 @@ fun StudyTab(notes: List<Note>, onOpenNote: (String) -> Unit, onOpenAsk: () -> U
     val auth by session.state.collectAsStateWithLifecycle()
     Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when {
-            auth !is AuthState.SignedIn -> InfoCard(
+            auth !is AuthState.SignedIn -> NeedsAccountPanel(
                 "Belajar dengan AI",
-                "Rangkuman dan kuis dari catatan membutuhkan akun dan koneksi internet. Masuk dari menu Pengaturan.",
+                "Buat rangkuman dan kuis dari catatanmu, lalu tanyakan isi PDF materi.",
+                canSignIn = auth is AuthState.SignedOut,
             )
             else -> {
                 Card(

@@ -21,8 +21,9 @@ android {
         applicationId = "id.studyflow"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        // Naikkan setiap rilis agar APK baru bisa dipasang menimpa versi lama.
+        versionCode = 2
+        versionName = providers.gradleProperty("studyflow.version").get()
     }
 
     val storeFilePath = signingValue("storeFile", "STUDYFLOW_KEYSTORE_FILE")

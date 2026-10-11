@@ -25,6 +25,7 @@ val appConfigValues = mapOf(
     "supabasePublishableKey" to configValue("studyflow.supabase.publishableKey", "STUDYFLOW_SUPABASE_PUBLISHABLE_KEY"),
     "apiBaseUrl" to configValue("studyflow.api.baseUrl", "STUDYFLOW_API_BASE_URL"),
     "androidApiBaseUrl" to configValue("studyflow.api.baseUrl.android", "STUDYFLOW_API_BASE_URL_ANDROID"),
+    "appVersion" to providers.gradleProperty("studyflow.version").get(),
 )
 
 val generateAppConfig = tasks.register("generateAppConfig") {
@@ -81,6 +82,7 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.material.icons.core)
             implementation(libs.compose.ui.tooling.preview)
+            implementation(libs.compose.components.resources)
 
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.androidx.lifecycle.runtime.compose)
@@ -135,4 +137,10 @@ dependencies {
 
 room {
     schemaDirectory("$projectDir/schemas")
+}
+
+// Font Plus Jakarta Sans (OFL, lihat docs/licenses) dibundel sebagai Compose Resources.
+compose.resources {
+    packageOfResClass = "id.studyflow.resources"
+    publicResClass = false
 }
