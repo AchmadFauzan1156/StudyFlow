@@ -38,6 +38,9 @@ internal val LightColors = lightColorScheme(
     onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFFEE4E2),
     onErrorContainer = Color(0xFF55160C),
+    inverseSurface = Color(0xFF2F2E2B),
+    inverseOnSurface = Color(0xFFF2F0EC),
+    inversePrimary = Color(0xFF5EEAD4),
 )
 
 internal val DarkColors = darkColorScheme(
@@ -70,6 +73,9 @@ internal val DarkColors = darkColorScheme(
     onError = Color(0xFF55160C),
     errorContainer = Color(0xFF55160C),
     onErrorContainer = Color(0xFFFEE4E2),
+    inverseSurface = Color(0xFFE7E5E1),
+    inverseOnSurface = Color(0xFF2F2E2B),
+    inversePrimary = Color(0xFF0F766E),
 )
 
 /** Warna penanda mata kuliah: garis, titik, dan huruf avatar. Latar avatar memakai warna ini dengan alfa. */
