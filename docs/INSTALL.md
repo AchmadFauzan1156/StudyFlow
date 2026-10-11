@@ -50,5 +50,6 @@ Versi baru bisa dipasang langsung di atas versi lama tanpa menghapusnya.
 | Tidak bisa masuk | Periksa email dan kata sandi; daftar dulu jika belum punya akun. |
 | Fitur AI tidak tersedia | Fitur AI hanya untuk akun yang sudah masuk. Jika muncul pesan batas harian, coba lagi besok. |
 | Installer Windows diblokir | Lihat langkah SmartScreen di atas. |
+| Saat memperbarui muncul "Could not set file security for file '…\Config.Msi\….rbf'. Error: 5" | Installer tidak punya izin membuat berkas cadangan di akar drive tempat versi lama terpasang (biasanya karena dipasang di drive selain C:). Pilih **Ignore** untuk melanjutkan; pemasangan tetap selesai, hanya tanpa cadangan pemulihan. Jika gagal, tutup installer lalu jalankan ulang dengan klik kanan → **Run as administrator**, atau hapus versi lama lalu pasang ulang di folder bawaan. Data tersimpan terpisah di `%APPDATA%StudyFlow` sehingga tidak ikut terhapus. |
 
 Laporkan masalah lain lewat halaman **Issues** di repositori GitHub.

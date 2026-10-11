@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/png/horizontal/studyflow-horizontal-on-dark-800.png">
+    <img alt="StudyFlow" src="docs/brand/png/horizontal/studyflow-horizontal-800.png" width="360">
+  </picture>
+</p>
+
 # StudyFlow
 
 Aplikasi belajar pribadi untuk mahasiswa. Simpan catatan per mata kuliah, kelola deadline tugas, sinkronkan antar perangkat, buat rangkuman dan kuis dengan AI, dan tanyakan isi PDF materi dengan rujukan halaman yang bisa diperiksa.
@@ -14,17 +21,18 @@ Aplikasi belajar pribadi untuk mahasiswa. Simpan catatan per mata kuliah, kelola
 ## Daftar isi
 
 1. [Fitur](#fitur)
-2. [Mulai cepat: mode lokal](#mulai-cepat-mode-lokal)
-3. [Prasyarat](#prasyarat)
-4. [Perintah aplikasi](#perintah-aplikasi)
-5. [Menjalankan backend](#menjalankan-backend)
-6. [Mengaktifkan akun dan sinkronisasi](#mengaktifkan-akun-dan-sinkronisasi)
-7. [Mengaktifkan AI](#mengaktifkan-ai)
-8. [Penyimpanan PDF](#penyimpanan-pdf)
-9. [Tes](#tes)
-10. [Masalah yang sering muncul](#masalah-yang-sering-muncul)
-11. [Konfigurasi dan rahasia](#konfigurasi-dan-rahasia)
-12. [Struktur proyek dan dokumen lain](#struktur-proyek-dan-dokumen-lain)
+2. [Tech stack dan versi](#tech-stack-dan-versi)
+3. [Mulai cepat: mode lokal](#mulai-cepat-mode-lokal)
+4. [Prasyarat](#prasyarat)
+5. [Perintah aplikasi](#perintah-aplikasi)
+6. [Menjalankan backend](#menjalankan-backend)
+7. [Mengaktifkan akun dan sinkronisasi](#mengaktifkan-akun-dan-sinkronisasi)
+8. [Mengaktifkan AI](#mengaktifkan-ai)
+9. [Penyimpanan PDF](#penyimpanan-pdf)
+10. [Tes](#tes)
+11. [Masalah yang sering muncul](#masalah-yang-sering-muncul)
+12. [Konfigurasi dan rahasia](#konfigurasi-dan-rahasia)
+13. [Struktur proyek dan dokumen lain](#struktur-proyek-dan-dokumen-lain)
 
 ## Fitur
 
@@ -36,6 +44,73 @@ Semua fase yang direncanakan (0–6) sudah selesai.
 - **Tanya materi.** Unggah PDF berbasis teks, ajukan pertanyaan, dan dapatkan jawaban beserta sumbernya (judul dan halaman).
 - **Progres belajar.** Penguasaan per topik, rekomendasi latihan, dan latihan kartu (Leitner) dari soal yang pernah dijawab salah.
 - **Siap dirilis.** Docker untuk API dan worker, paket Android dan desktop, serta CI dengan pemindai rahasia.
+
+## Tech stack dan versi
+
+Versi aplikasi: **0.2.0** (`studyflow.version` di `gradle.properties`). Versi library aplikasi diatur di `gradle/libs.versions.toml`; versi backend dikunci di `backend/uv.lock`. Alasan pemilihan dan cara memperbarui ada di [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md).
+
+### Aplikasi (Android dan Windows)
+
+| Komponen | Versi | Kegunaan |
+|---|---|---|
+| Kotlin (Multiplatform) | 2.4.20 | Bahasa dan kode bersama Android + desktop |
+| Compose Multiplatform | 1.12.1 | UI bersama |
+| Material 3 (Compose) | 1.9.0 | Komponen UI |
+| Material Icons (core) | 1.7.3 | Ikon |
+| Compose Resources | 1.12.1 | Font dan ikon yang dibundel |
+| AndroidX Navigation Compose | 2.9.2 | Navigasi antar layar |
+| AndroidX Lifecycle (ViewModel) | 2.11.0 | ViewModel dan lifecycle |
+| AndroidX Activity Compose | 1.13.0 | Entry point Android |
+| Room (KMP) + SQLite bundled | 2.8.5 / 2.6.2 | Database lokal offline-first |
+| KSP | 2.3.12 | Generator kode Room |
+| Koin | 4.2.2 | Dependency injection |
+| Ktor Client | 3.6.0 | HTTP ke backend dan Supabase Auth |
+| kotlinx.coroutines | 1.11.0 | Asinkron |
+| kotlinx.serialization | 1.11.0 | JSON |
+| kotlinx-datetime | 0.8.0 | Tanggal, jam, zona waktu |
+| JNA | 5.19.1 | Penyimpanan sesi terenkripsi (DPAPI) di Windows |
+| Font Plus Jakarta Sans | 2.7.1 (OFL) | Tipografi aplikasi dan logo |
+
+| Build dan target | Versi |
+|---|---|
+| Gradle | 9.6.0 |
+| Android Gradle Plugin | 9.4.1 |
+| JDK untuk build | 17+ (rilis 0.2.0 dibuat dengan JDK 21; bytecode target 17) |
+| Android | minSdk 26 (Android 8.0), targetSdk 36, compileSdk 37 |
+| Paket desktop | jpackage (Compose Desktop) + WiX v3 untuk installer `.exe`/`.msi` |
+| Lint | ktlint-gradle 14.2.0 (gaya `intellij_idea`) |
+| Tes | kotlin.test, Compose UI Test 1.12.1, Ktor MockEngine |
+
+### Backend (API dan worker AI)
+
+| Komponen | Versi | Kegunaan |
+|---|---|---|
+| Python | ≥ 3.12 (image Docker: 3.13) | Runtime |
+| FastAPI (`fastapi[standard]`) | 0.141.1 | API HTTP |
+| Uvicorn | 0.54.0 | Server ASGI |
+| Pydantic / pydantic-settings | 2.13.5 / 2.15.0 | Validasi dan konfigurasi |
+| SQLAlchemy | 2.1.1 | ORM |
+| Alembic | 1.20.0 | Migrasi database |
+| psycopg (binary) | 3.3.6 | Driver PostgreSQL |
+| pgvector (Python) | 0.5.0 | Kolom vektor untuk pencarian materi |
+| PyJWT (crypto) | 2.15.0 | Verifikasi token Supabase (JWKS ES256) |
+| pypdf | 6.19.0 | Ekstraksi teks PDF |
+| httpx2 | 2.13.1 | HTTP ke Gemini dan Supabase Storage |
+| python-multipart | 0.0.32 | Unggah berkas |
+| uv | 0.12.19 | Manajer dependency dan lingkungan |
+| pytest / ruff | 9.1.1 / 0.16.9 | Tes dan lint |
+| fastapi-cloud-cli | 0.26.0 | Deploy ke FastAPI Cloud |
+
+### Layanan dan infrastruktur
+
+| Layanan | Paket | Kegunaan |
+|---|---|---|
+| FastAPI Cloud | Hobby (gratis) | Hosting API + worker tertanam |
+| Supabase | Free | Auth (email/kata sandi), PostgreSQL + pgvector, Storage PDF privat |
+| Google Gemini API | Free tier | `gemini-3.8-flash` (rangkuman, kuis, jawaban), `gemini-embedding-001` (768 dimensi) |
+| Docker | — | `pgvector/pgvector:pg17` untuk pengembangan dan tes integrasi |
+| GitHub Actions | — | CI: gitleaks, ruff + pytest backend, ktlint + tes aplikasi + build Android/desktop |
+| GitHub Releases | — | Distribusi `.exe`, ZIP portabel, dan APK |
 
 ## Mulai cepat: mode lokal
 
@@ -58,6 +133,7 @@ Tanpa konfigurasi server, aplikasi berjalan dalam **mode lokal** dan tombol masu
 | Aplikasi desktop | JDK 17+ (diuji dengan JDK 25). Gradle tidak perlu dipasang; gunakan wrapper. |
 | Aplikasi Android | Android SDK dengan platform **API 37**, dan `local.properties` di root proyek. |
 | Backend | Python 3.12+, [uv](https://docs.astral.sh/uv/), dan Docker untuk PostgreSQL lokal. |
+| Installer Windows (`packageExe`) | Fitur Windows **.NET Framework 3.5** (NetFx3) untuk WiX; WiX v3 diunduh otomatis oleh Gradle. |
 
 `local.properties` biasanya dibuat otomatis oleh Android Studio. Kalau belum ada, buat sendiri:
 
