@@ -20,6 +20,28 @@ Spesifikasi dan rencana: `docs/superpowers/specs/2026-10-11-quality-and-free-dep
 | `docker build` + `docker run ... /app/start.sh` dengan `PORT=10000`, worker tertanam, provider demo | Migrasi 0001–0004 berjalan, API listen di 10000; lewat Playwright: push sinkronisasi `applied`, job rangkuman `succeeded` tanpa proses worker terpisah, hasil berlabel `[Demo`, pull mengembalikan 2 perubahan |
 | Playwright terhadap `uvicorn` lokal di port 10000, mode tertanam tanpa database | `/health` 200 (`status: ok`); worker tertanam tidak jalan dan dicatat di log, API tetap hidup; Swagger `/docs` memuat 28 endpoint tanpa error; token tidak valid → 401 format error standar |
 
+### Deploy online dan paket rilis
+- Hosting: **FastAPI Cloud Hobby** (gratis, tanpa kartu) + Supabase Free + Gemini free tier. Render Free (`render.yaml`) dan Docker di Hugging Face Spaces ternyata meminta kartu atau berbayar, jadi tidak dipakai. Panduan: `docs/DEPLOYMENT.md` bagian "Deploy gratis".
+- Desktop: installer `.exe` per pengguna (shortcut, menu Start, pilih folder, `upgradeUuid` tetap). WiX diunduh otomatis oleh plugin Compose; Windows perlu fitur .NET 3.5 (NetFx3).
+- Android: APK release bertanda tangan dari keystore di luar repo (`keystore.properties` di-ignore).
+- Panduan pengguna: `docs/INSTALL.md`.
+
+| Perintah | Hasil |
+|---|---|
+| `uv run --env-file .env.production alembic upgrade head` (Supabase, session pooler) | Database di revisi 0004 (head) |
+| `GET https://studyflow-api.fastapicloud.dev/health` | 200, `environment: production`, `ai_mode: live` |
+| Uji alur online (skrip): daftar akun uji → push → rangkuman → pull | Push `applied` ×2, job `succeeded` lewat worker tertanam, rangkuman asli Gemini dalam bahasa Indonesia, pull 2 perubahan; akun dan data uji dihapus |
+| `gradlew :desktopApp:packageExe` | `StudyFlow-0.1.0.exe` (±82 MB) |
+| `gradlew :androidApp:assembleRelease` + `apksigner verify` | Bertanda tangan (skema v2), ±17 MB |
+| APK release di emulator | Daftar akun → tambah mata kuliah → data muncul di database online; akun uji dihapus |
+| `gradlew ktlintCheck :shared:jvmTest :androidApp:assembleDebug :desktopApp:jar` | Berhasil; 69 tes lulus |
+| `uv run ruff check .` dan `uv run pytest` dengan PostgreSQL lokal | Bersih; 118 tes lulus (termasuk integrasi) |
+
+### Keterbatasan
+- FastAPI Cloud tidak punya perintah pre-start: migrasi baru dijalankan manual dari komputer pemilik.
+- Server gratis *scale to zero*; permintaan pertama setelah sepi lebih lambat. Proyek Supabase Free di-pause setelah sekitar seminggu tanpa aktivitas.
+- Installer Windows dan APK tidak memakai sertifikat berbayar, jadi SmartScreen/Play Protect menampilkan peringatan.
+
 ## Checkpoint 6 — Fase 6: rilis demonstrasi (29 September 2026)
 
 ### Selesai

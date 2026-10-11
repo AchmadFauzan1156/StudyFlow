@@ -14,7 +14,10 @@ Sumber: spesifikasi arsitektur StudyFlow (28 September 2026). Estimasi waktu sen
 
 ## Setelah fase 6
 
-Semua fase spesifikasi selesai. Kandidat pekerjaan berikutnya (butuh keputusan pemilik):
-- Verifikasi dengan proyek Supabase dan API key Gemini sungguhan, kalibrasi `STUDYFLOW_RAG_MAX_DISTANCE`, dan evaluasi manual kualitas kuis/jawaban.
+Semua fase spesifikasi selesai. Peningkatan kualitas (ktlint, tes ViewModel dan Compose UI, refactor UI) dan deploy gratis (FastAPI Cloud + Supabase + Gemini, installer `.exe`, APK bertanda tangan) selesai pada Oktober 2026; lihat Checkpoint 7 di `docs/PROGRESS.md`.
+
+Kandidat pekerjaan berikutnya (butuh keputusan pemilik):
+- Rilis lewat GitHub Releases dan otomatisasi build `.exe`/APK di GitHub Actions saat tag dibuat.
+- Kalibrasi `STUDYFLOW_RAG_MAX_DISTANCE` dengan Gemini sungguhan dan evaluasi manual kualitas kuis/jawaban.
 - Rangkuman dokumen panjang per bagian, unggah versi baru dokumen, thread per dokumen di UI.
 - Notifikasi deadline OS, OCR untuk PDF scan, dan target iOS (butuh macOS/Xcode).
