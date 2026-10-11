@@ -2,6 +2,7 @@
 
 import io
 import multiprocessing as mp
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -78,16 +79,27 @@ def _extract_all(data: bytes) -> list[str]:
     return [_normalize(page.extract_text() or "") for page in reader.pages]
 
 
+def _current_address_space() -> int:
+    """Memori virtual proses saat ini (byte); 0 jika /proc tidak tersedia."""
+    try:
+        with open("/proc/self/statm") as f:
+            return int(f.read().split()[0]) * os.sysconf("SC_PAGE_SIZE")
+    except (OSError, ValueError, IndexError):
+        return 0
+
+
 def _limit_memory(max_memory_mb: int | None) -> None:
-    """Batasi memori proses ekstraksi (Linux/Unix) agar PDF berat gagal sendiri, bukan mematikan container API."""
+    """Batasi memori tambahan proses ekstraksi (Linux/Unix) agar PDF berat gagal sendiri, bukan mematikan container."""
     if not max_memory_mb:
         return
     try:
         import resource
     except ImportError:  # Windows (pengembangan lokal): tanpa batas.
         return
-    limit = max_memory_mb * 1024 * 1024
     # RLIMIT_AS (memori virtual total): RLIMIT_DATA terbukti tidak menahan alokasi Python di Linux.
+    # Batas = pemakaian awal + ruang tambahan: di server, proses anak sudah memakai ratusan MB virtual sebelum
+    # ekstraksi dimulai, sehingga batas mutlak menolak PDF biasa.
+    limit = _current_address_space() + max_memory_mb * 1024 * 1024
     resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
 
 
