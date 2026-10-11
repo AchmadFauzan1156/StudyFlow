@@ -329,3 +329,16 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, accent
         }
     }
 }
+
+/** Baris "label ... angka" untuk ringkasan; angka tabular, merah jika [alert]. */
+@Composable
+fun CountRow(label: String, value: Int, modifier: Modifier = Modifier, alert: Boolean = false) {
+    Row(modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text(
+            value.toString(),
+            style = MaterialTheme.typography.titleMedium.tabularNumbers(),
+            color = if (alert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}

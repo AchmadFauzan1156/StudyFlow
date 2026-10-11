@@ -53,7 +53,10 @@ import id.studyflow.data.sync.ConflictSide
 import id.studyflow.data.sync.SyncPhase
 import id.studyflow.domain.formatDateTime
 import id.studyflow.ui.components.EmptyState
+import id.studyflow.ui.components.GroupLabel
 import id.studyflow.ui.components.InfoCard
+import id.studyflow.ui.components.heading
+import id.studyflow.ui.theme.ContentWidth
 import kotlinx.datetime.TimeZone
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -74,7 +77,7 @@ fun AuthScreen(onDone: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Akun StudyFlow") },
+                title = { Text("Akun StudyFlow", Modifier.heading()) },
                 navigationIcon = {
                     IconButton(onClick = {
                         viewModel.clearForm()
@@ -167,7 +170,7 @@ fun AccountSection(onOpenAuth: () -> Unit, onOpenConflicts: () -> Unit, formatTi
     var confirmSignOut by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Akun", style = MaterialTheme.typography.titleMedium)
+        GroupLabel("Akun")
         when (val auth = state.auth) {
             AuthState.Unconfigured -> {
                 LabeledValue("Status", "Mode lokal")
@@ -278,7 +281,7 @@ fun ConflictsScreen(zone: TimeZone, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Konflik sinkronisasi") },
+                title = { Text("Konflik sinkronisasi", Modifier.heading()) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali") }
                 },
@@ -291,7 +294,7 @@ fun ConflictsScreen(zone: TimeZone, onBack: () -> Unit) {
                 list == null -> Unit
                 list.isEmpty() -> EmptyState("Tidak ada konflik", "Semua perubahan sudah selaras dengan server.")
                 else -> LazyColumn(
-                    modifier = Modifier.widthIn(max = 840.dp).fillMaxWidth(),
+                    modifier = Modifier.widthIn(max = ContentWidth.list).fillMaxWidth(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {

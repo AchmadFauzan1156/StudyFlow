@@ -63,6 +63,7 @@ import id.studyflow.domain.agendaGroup
 import id.studyflow.domain.deadlineStatus
 import id.studyflow.domain.formatDate
 import id.studyflow.domain.toLocalDateTime
+import id.studyflow.ui.components.CountRow
 import id.studyflow.ui.components.EmptyState
 import id.studyflow.ui.components.GroupLabel
 import id.studyflow.ui.components.TaskRow
@@ -303,24 +304,12 @@ private fun ConflictCard(count: Int, onClick: () -> Unit) {
 private fun OverviewPanel(state: HomeUiState, onOpenCourses: () -> Unit) {
     Column {
         GroupLabel("Ringkasan")
-        OverviewRow("Mata kuliah", state.courseCount)
+        CountRow("Mata kuliah", state.courseCount)
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        OverviewRow("Tugas terbuka", state.openCount)
+        CountRow("Tugas terbuka", state.openCount)
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        OverviewRow("Terlambat", state.overdueCount, alert = state.overdueCount > 0)
+        CountRow("Terlambat", state.overdueCount, alert = state.overdueCount > 0)
         TextButton(onClick = onOpenCourses, modifier = Modifier.padding(top = Spacing.sm)) { Text("Lihat mata kuliah") }
-    }
-}
-
-@Composable
-private fun OverviewRow(label: String, value: Int, alert: Boolean = false) {
-    Row(Modifier.fillMaxWidth().padding(vertical = Spacing.md), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(
-            value.toString(),
-            style = MaterialTheme.typography.titleMedium.tabularNumbers(),
-            color = if (alert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-        )
     }
 }
 

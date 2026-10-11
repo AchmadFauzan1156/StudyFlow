@@ -22,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import id.studyflow.ui.components.heading
+import id.studyflow.ui.theme.ContentWidth
 
 @Composable
 internal fun Label(text: String, container: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color) {
@@ -47,7 +49,7 @@ internal fun StudyScaffold(title: String, onBack: () -> Unit, content: @Composab
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.heading()) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali") }
                 },
@@ -55,7 +57,7 @@ internal fun StudyScaffold(title: String, onBack: () -> Unit, content: @Composab
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-            content(Modifier.widthIn(max = 840.dp).fillMaxWidth())
+            content(Modifier.widthIn(max = ContentWidth.reading).fillMaxWidth())
         }
     }
 }

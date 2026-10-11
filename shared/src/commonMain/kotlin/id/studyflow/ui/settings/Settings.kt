@@ -32,6 +32,10 @@ import id.studyflow.data.repository.SettingsRepository
 import id.studyflow.domain.ThemeMode
 import id.studyflow.domain.formatDateTime
 import id.studyflow.ui.account.AccountSection
+import id.studyflow.ui.components.GroupLabel
+import id.studyflow.ui.components.heading
+import id.studyflow.ui.theme.ContentWidth
+import id.studyflow.ui.theme.Spacing
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -63,13 +67,13 @@ fun SettingsScreen(onOpenAuth: () -> Unit, onOpenConflicts: () -> Unit) {
     val viewModel = koinViewModel<SettingsViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Pengaturan") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Pengaturan", Modifier.heading()) }) }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
             Column(
-                Modifier.widthIn(max = 840.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+                Modifier.widthIn(max = ContentWidth.form).fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text("Tampilan", style = MaterialTheme.typography.titleMedium)
+                GroupLabel("Tampilan")
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     ThemeMode.entries.forEachIndexed { index, mode ->
                         SegmentedButton(
@@ -82,7 +86,7 @@ fun SettingsScreen(onOpenAuth: () -> Unit, onOpenConflicts: () -> Unit) {
                 HorizontalDivider()
                 AccountSection(onOpenAuth, onOpenConflicts, viewModel::formatTime)
                 HorizontalDivider()
-                Text("Tentang", style = MaterialTheme.typography.titleMedium)
+                GroupLabel("Tentang")
                 SettingRow("Zona waktu tampilan", state.timeZoneId)
                 SettingRow("Versi", AppConfig.appVersion)
             }
