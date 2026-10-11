@@ -74,3 +74,34 @@ def test_embedded_worker_survives_database_error(monkeypatch):
     thread.join(5)
     assert not thread.is_alive()
     assert len(calls) == 2
+
+
+def test_worker_factory_error_keeps_api_alive(monkeypatch):
+    # Mis. STUDYFLOW_DATABASE_URL terisi tetapi formatnya salah: create_engine melempar ArgumentError.
+    def broken_factory(settings):
+        raise ValueError("Could not parse SQLAlchemy URL")
+
+    settings = Settings(_env_file=None, app_env=AppEnv.TEST, ai_provider=AIProviderKind.NONE, embedded_worker=True)
+    monkeypatch.setattr("app.main.get_settings", lambda: settings)
+    app = create_app(worker_factory=broken_factory)
+    with TestClient(app) as client:
+        assert client.get("/health").status_code == 200
+    assert app.state.embedded_worker_thread is None
+
+
+def test_app_logs_are_visible_under_uvicorn(monkeypatch):
+    # Uvicorn tidak memasang handler untuk logger "studyflow.*"; tanpa ini log INFO worker hilang.
+    import logging
+
+    package_logger = logging.getLogger("studyflow")
+    saved = (package_logger.handlers[:], package_logger.level)
+    package_logger.handlers.clear()
+    package_logger.setLevel(logging.NOTSET)
+    try:
+        _app(monkeypatch, None)
+        assert package_logger.handlers
+        assert logging.getLogger("studyflow.worker").getEffectiveLevel() <= logging.INFO
+        _app(monkeypatch, None)
+        assert len(package_logger.handlers) == 1
+    finally:
+        package_logger.handlers[:], package_logger.level = saved[0], saved[1]
