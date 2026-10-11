@@ -111,6 +111,8 @@ class Settings(BaseSettings):
     document_max_bytes: int = 10 * 1024 * 1024
     document_max_pages: int = 100
     document_extract_timeout_seconds: float = 60.0
+    # Batas memori proses ekstraksi PDF (Linux). Container gratis 500 MB dipakai bersama API dan worker.
+    document_extract_memory_mb: int = 200
     chunk_words: int = 450
     chunk_overlap_words: int = 70
     index_user_daily_limit: int = 20

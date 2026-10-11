@@ -55,6 +55,39 @@ def test_extraction_runs_in_subprocess_and_detects_scans():
     assert exc.value.code == "pdf_no_text"
 
 
+def test_out_of_memory_in_extractor_is_reported_as_too_heavy(monkeypatch):
+    # Proses anak kehabisan memori (dibatasi agar container tidak ikut mati) -> ditolak dengan pesan jelas.
+    import multiprocessing as mp
+
+    from app.documents import pdf
+
+    def boom(data):
+        raise MemoryError
+
+    monkeypatch.setattr(pdf, "_extract_all", boom)
+    receiver, sender = mp.Pipe(duplex=False)
+    pdf._worker(b"%PDF-", sender, None)
+    status, payload = receiver.recv()
+    with pytest.raises(PdfRejected) as exc:
+        pdf._result_to_pages(status, payload)
+    assert exc.value.code == "pdf_too_heavy"
+
+
+@pytest.mark.skipif(not hasattr(__import__("os"), "fork"), reason="batas memori proses hanya di Linux/Unix")
+def test_extractor_memory_limit_is_enforced():
+    with pytest.raises(PdfRejected) as exc:
+        # PDF besar perlu alokasi baru; batas 8 MB berada di bawah pemakaian dasar interpreter.
+        extract_pages(make_pdf([LONG_PAGE * 4] * 100), timeout_seconds=60, max_memory_mb=8)
+    assert exc.value.code == "pdf_too_heavy"
+
+
+def test_normal_pdf_fits_in_default_memory_limit():
+    # 100 halaman teks penuh harus tetap lolos dengan batas bawaan (200 MB).
+    page = ("RSA memakai dua bilangan prima p dan q untuk membentuk modulus n. " * 40).strip()
+    extracted = extract_pages(make_pdf([page] * 100), timeout_seconds=120, max_memory_mb=200)
+    assert len(extracted.pages) == 100
+
+
 def test_assess_always_warns_about_formulas():
     result = assess([LONG_PAGE])
     assert any("Rumus" in w for w in result.warnings)

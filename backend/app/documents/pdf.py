@@ -2,9 +2,10 @@
 
 import io
 import multiprocessing as mp
-import queue
 import re
+import time
 from dataclasses import dataclass, field
+from multiprocessing.connection import Connection
 
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
@@ -14,6 +15,7 @@ PDF_SIGNATURE = b"%PDF-"
 MIN_PAGE_CHARS = 20
 # Dokumen dianggap tidak layak jika total teks di bawah ini.
 MIN_DOCUMENT_CHARS = 200
+TOO_HEAVY_MESSAGE = "PDF terlalu berat untuk diproses. Pecah menjadi beberapa berkas yang lebih kecil."
 
 
 class PdfRejected(Exception):
@@ -76,30 +78,62 @@ def _extract_all(data: bytes) -> list[str]:
     return [_normalize(page.extract_text() or "") for page in reader.pages]
 
 
-def _worker(data: bytes, out: "mp.Queue") -> None:
+def _limit_memory(max_memory_mb: int | None) -> None:
+    """Batasi memori proses ekstraksi (Linux/Unix) agar PDF berat gagal sendiri, bukan mematikan container API."""
+    if not max_memory_mb:
+        return
     try:
-        out.put(("ok", _extract_all(data)))
-    except Exception as exc:  # noqa: BLE001 - dikirim balik ke proses induk sebagai kegagalan
-        out.put(("error", type(exc).__name__))
+        import resource
+    except ImportError:  # Windows (pengembangan lokal): tanpa batas.
+        return
+    limit = max_memory_mb * 1024 * 1024
+    # RLIMIT_AS (memori virtual total): RLIMIT_DATA terbukti tidak menahan alokasi Python di Linux.
+    resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
 
 
-def extract_pages(data: bytes, timeout_seconds: float) -> ExtractedPdf:
-    """Ekstraksi per halaman di proses terpisah dengan batas waktu (PDF berat tidak menggantung worker)."""
+def _worker(data: bytes, out: Connection, max_memory_mb: int | None = None) -> None:
+    # Pipe (bukan Queue): pengiriman sinkron tanpa thread tambahan, jadi tetap bisa melapor saat memori dibatasi.
+    try:
+        _limit_memory(max_memory_mb)
+        result = ("ok", _extract_all(data))
+    except BaseException as exc:  # noqa: BLE001 - termasuk MemoryError; dikirim balik ke proses induk
+        result = ("error", type(exc).__name__)
+    out.send(result)
+    out.close()
+
+
+def _result_to_pages(status: str, payload: object) -> list[str]:
+    if status == "ok":
+        return payload  # type: ignore[return-value]
+    if payload == "MemoryError":
+        raise PdfRejected("pdf_too_heavy", TOO_HEAVY_MESSAGE)
+    raise PdfRejected("pdf_invalid", "PDF rusak atau tidak dapat dibaca")
+
+
+def extract_pages(data: bytes, timeout_seconds: float, max_memory_mb: int | None = None) -> ExtractedPdf:
+    """Ekstraksi per halaman di proses terpisah dengan batas waktu dan memori (PDF berat tidak menggantung worker)."""
     ctx = mp.get_context("spawn")
-    out: mp.Queue = ctx.Queue()
-    proc = ctx.Process(target=_worker, args=(data, out), daemon=True)
+    receiver, sender = ctx.Pipe(duplex=False)
+    proc = ctx.Process(target=_worker, args=(data, sender, max_memory_mb), daemon=True)
     proc.start()
+    sender.close()
+    deadline = time.monotonic() + timeout_seconds
     try:
-        status, payload = out.get(timeout=timeout_seconds)
-    except queue.Empty as exc:
-        raise PdfRejected("extract_timeout", "Ekstraksi teks melebihi batas waktu") from exc
+        while not receiver.poll(0.2):
+            if not proc.is_alive() and not receiver.poll(0):
+                # Proses mati tanpa hasil (mis. dihentikan karena memori): jangan menunggu sampai batas waktu.
+                raise PdfRejected("pdf_too_heavy", TOO_HEAVY_MESSAGE)
+            if time.monotonic() > deadline:
+                raise PdfRejected("extract_timeout", "Ekstraksi teks melebihi batas waktu")
+        status, payload = receiver.recv()
+    except EOFError as exc:
+        raise PdfRejected("pdf_too_heavy", TOO_HEAVY_MESSAGE) from exc
     finally:
+        receiver.close()
         proc.join(timeout=5)
         if proc.is_alive():
             proc.kill()
-    if status != "ok":
-        raise PdfRejected("pdf_invalid", "PDF rusak atau tidak dapat dibaca")
-    return assess(payload)
+    return assess(_result_to_pages(status, payload))
 
 
 def assess(pages: list[str]) -> ExtractedPdf:
