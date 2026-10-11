@@ -1,0 +1,10 @@
+# File yang tidak diunggah oleh `fastapi deploy` (selain yang sudah ada di .gitignore).
+.env
+.env.*
+.venv/
+.storage/
+tests/
+scripts/
+docker/
+Dockerfile
+docker-compose*.yml

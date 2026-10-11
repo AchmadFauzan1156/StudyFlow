@@ -280,8 +280,12 @@ class QuizViewModel(
 
 // ---------- Riwayat (Progres) ----------
 
-data class QuizHistoryState(val attempts: List<AttemptSummaryDto> = emptyList(), val offline: Boolean = false,
-                            val error: String? = null, val loaded: Boolean = false)
+data class QuizHistoryState(
+    val attempts: List<AttemptSummaryDto> = emptyList(),
+    val offline: Boolean = false,
+    val error: String? = null,
+    val loaded: Boolean = false,
+)
 
 class QuizHistoryViewModel(private val ai: AiRepository) : ViewModel() {
     private val _state = MutableStateFlow(QuizHistoryState())

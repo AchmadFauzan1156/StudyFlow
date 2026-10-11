@@ -14,11 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class AppViewModel(
-    settings: SettingsRepository,
-    private val session: SessionManager,
-    private val localImport: LocalImport,
-) : ViewModel() {
+class AppViewModel(settings: SettingsRepository, private val session: SessionManager, private val localImport: LocalImport) : ViewModel() {
     val themeMode: StateFlow<ThemeMode> = settings.observeThemeMode()
         .stateIn(viewModelScope, SharingStarted.Eagerly, ThemeMode.SYSTEM)
 
@@ -29,7 +25,8 @@ class AppViewModel(
     init {
         viewModelScope.launch {
             session.state.collect { state ->
-                _importOffer.value = if (state is AuthState.SignedIn && !state.sessionExpired &&
+                _importOffer.value = if (state is AuthState.SignedIn &&
+                    !state.sessionExpired &&
                     localImport.shouldOffer(state.userId)
                 ) {
                     localImport.localCourseCount()

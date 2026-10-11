@@ -173,13 +173,7 @@ fun CoursesScreen(onOpenCourse: (String) -> Unit) {
 }
 
 @Composable
-private fun CourseCard(
-    course: Course,
-    onClick: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun CourseCard(course: Course, onClick: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
     var menuOpen by remember { mutableStateOf(false) }
     Card(
         onClick = onClick,
@@ -206,8 +200,14 @@ private fun CourseCard(
                     Icon(Icons.Filled.MoreVert, contentDescription = "Opsi ${course.name}")
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(text = { Text("Ubah") }, onClick = { menuOpen = false; onEdit() })
-                    DropdownMenuItem(text = { Text("Hapus") }, onClick = { menuOpen = false; onDelete() })
+                    DropdownMenuItem(text = { Text("Ubah") }, onClick = {
+                        menuOpen = false
+                        onEdit()
+                    })
+                    DropdownMenuItem(text = { Text("Hapus") }, onClick = {
+                        menuOpen = false
+                        onDelete()
+                    })
                 }
             }
         }
@@ -215,12 +215,7 @@ private fun CourseCard(
 }
 
 @Composable
-fun CourseFormDialog(
-    initial: Course?,
-    error: String?,
-    onSave: (name: String, semester: String) -> Unit,
-    onDismiss: () -> Unit,
-) {
+fun CourseFormDialog(initial: Course?, error: String?, onSave: (name: String, semester: String) -> Unit, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf(initial?.name.orEmpty()) }
     var semester by remember { mutableStateOf(initial?.semester.orEmpty()) }
     AlertDialog(

@@ -1,0 +1,31 @@
+# Blueprint Render: satu web service Docker gratis (API + worker tertanam).
+# Nilai rahasia (sync: false) diisi lewat dashboard Render, bukan di repo. Panduan: docs/DEPLOYMENT.md.
+services:
+  - type: web
+    name: studyflow-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerCommand: /app/start.sh
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: STUDYFLOW_APP_ENV
+        value: production
+      - key: STUDYFLOW_EMBEDDED_WORKER
+        value: "true"
+      - key: STUDYFLOW_STORAGE_BACKEND
+        value: supabase
+      - key: STUDYFLOW_AI_PROVIDER
+        value: gemini
+      - key: STUDYFLOW_EMBEDDING_PROVIDER
+        value: gemini
+      - key: STUDYFLOW_DATABASE_URL
+        sync: false
+      - key: STUDYFLOW_SUPABASE_URL
+        sync: false
+      - key: STUDYFLOW_SUPABASE_SERVICE_KEY
+        sync: false
+      - key: STUDYFLOW_AI_API_KEY
+        sync: false

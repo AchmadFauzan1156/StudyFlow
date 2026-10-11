@@ -33,6 +33,16 @@ compose.desktop {
             packageVersion = "0.1.0"
             // Tanpa modul ini aplikasi hasil paket langsung tertutup saat dibuka (hasil suggestRuntimeModules).
             modules("java.instrument", "java.management", "jdk.unsupported")
+            description = "Catatan kuliah, tugas, dan belajar dengan AI"
+            vendor = "StudyFlow"
+            windows {
+                menuGroup = "StudyFlow"
+                shortcut = true
+                dirChooser = true
+                perUserInstall = true
+                // Tetap sama di setiap versi agar installer baru menggantikan versi lama.
+                upgradeUuid = "41f47992-8c7c-47a4-885e-e3dd2dcc99db"
+            }
         }
     }
 }

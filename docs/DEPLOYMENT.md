@@ -50,6 +50,35 @@ STUDYFLOW_AI_API_KEY=<Gemini API key>
 
 Biaya hosting dan kuota Gemini bergantung pada platform dan pemakaian; perkiraan belum dihitung.
 
+### Deploy gratis: FastAPI Cloud Hobby + Supabase Free + Gemini free tier
+
+Tanpa kartu kredit. API dan worker berjalan dalam satu proses (`STUDYFLOW_EMBEDDED_WORKER=true`).
+
+1. **Migrasi** (dari komputer sendiri, sekali per rilis yang menambah migrasi). Buat `backend/.env.production` (di-ignore Git) berisi satu baris `STUDYFLOW_DATABASE_URL=...` (Session pooler Supabase, port 5432), lalu:
+   ```powershell
+   cd backend
+   uv run --env-file .env.production alembic upgrade head
+   ```
+2. **Deploy** dari folder `backend/` (entrypoint diambil dari `[tool.fastapi]` di `pyproject.toml`; `.fastapicloudignore` mencegah `.env`, tes, dan file Docker ikut terunggah):
+   ```powershell
+   cd backend
+   $env:PYTHONIOENCODING = "utf-8"   # CLI memakai emoji; konsol Windows lama gagal tanpa ini
+   uv run fastapi deploy
+   ```
+   Saat pertama kali, CLI membuka browser untuk login dan meminta membuat app baru.
+3. **Environment variables** (dashboard → app → Environment Variables → Edit):
+   - Biasa: `STUDYFLOW_APP_ENV=production`, `STUDYFLOW_EMBEDDED_WORKER=true`, `STUDYFLOW_STORAGE_BACKEND=supabase`, `STUDYFLOW_AI_PROVIDER=gemini`, `STUDYFLOW_EMBEDDING_PROVIDER=gemini`, `STUDYFLOW_SUPABASE_URL`.
+   - Nyalakan **Secret**: `STUDYFLOW_DATABASE_URL`, `STUDYFLOW_SUPABASE_SERVICE_KEY`, `STUDYFLOW_AI_API_KEY`.
+   - Simpan dengan **Save and Redeploy**. Lewat CLI: `uv run fastapi cloud env set --secret NAMA` (NAMA wajib ditulis; tanpa NAMA, CLI menanyakan nama lebih dulu dan nilai rahasia bisa tersimpan sebagai nama).
+4. **Cek**: `GET https://<app>.fastapicloud.dev/health` → `environment: production`, `ai_mode: live`.
+
+Batasan paket gratis:
+- App di-*scale to zero* saat sepi; permintaan pertama sesudahnya lebih lambat. Job AI yang tertunda diproses saat app aktif lagi.
+- Proyek Supabase Free di-*pause* setelah sekitar seminggu tanpa aktivitas; aktifkan lagi dari dashboard (Resume).
+- Kuota Gemini free tier per proyek terlihat di Google AI Studio; backend juga membatasi pemakaian per pengguna per hari.
+
+`render.yaml` tetap tersedia sebagai alternatif (Render Free, satu web service Docker dengan `/app/start.sh`), tetapi Render meminta verifikasi kartu kredit.
+
 ## 3. Aplikasi
 
 - **Konfigurasi build** (`local.properties` atau environment): `studyflow.supabase.url`, `studyflow.supabase.publishableKey`, `studyflow.api.baseUrl` (HTTPS).

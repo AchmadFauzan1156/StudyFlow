@@ -22,12 +22,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
 
-data class SyncReport(
-    val pushed: Int = 0,
-    val conflicts: Int = 0,
-    val rejected: Int = 0,
-    val pulled: Int = 0,
-)
+data class SyncReport(val pushed: Int = 0, val conflicts: Int = 0, val rejected: Int = 0, val pulled: Int = 0)
 
 /**
  * Satu siklus sinkronisasi: kirim outbox (push) lalu ambil perubahan server (pull).
@@ -40,11 +35,7 @@ data class SyncReport(
  *   ditahan sampai pengguna memilih.
  * - Pull tidak menimpa entity yang masih punya perubahan lokal tertunda atau konflik.
  */
-class SyncEngine(
-    private val databases: DatabaseManager,
-    private val api: SyncApi,
-    private val clock: AppClock,
-) {
+class SyncEngine(private val databases: DatabaseManager, private val api: SyncApi, private val clock: AppClock) {
     private val mutex = Mutex()
 
     suspend fun syncOnce(): SyncReport = mutex.withLock {
@@ -202,8 +193,7 @@ class SyncEngine(
         internal const val KEY_CURSOR = "sync_cursor"
         private val ORDER = listOf("course", "note", "task")
 
-        fun localType(apiType: String): String? =
-            EntityType.entries.firstOrNull { it.name.equals(apiType, ignoreCase = true) }?.name
+        fun localType(apiType: String): String? = EntityType.entries.firstOrNull { it.name.equals(apiType, ignoreCase = true) }?.name
     }
 }
 

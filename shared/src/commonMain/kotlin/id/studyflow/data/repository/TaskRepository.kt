@@ -24,10 +24,7 @@ data class TaskInput(
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class TaskRepository(
-    private val databases: DatabaseManager,
-    private val mutations: LocalMutations,
-) {
+class TaskRepository(private val databases: DatabaseManager, private val mutations: LocalMutations) {
     private val taskDao get() = databases.db.taskDao()
 
     fun observeByCourse(courseId: String): Flow<List<StudyTask>> =
@@ -92,7 +89,10 @@ class TaskRepository(
             val now = mutations.now()
             db.taskDao().upsert(current.copy(deletedAt = now, updatedAt = now, pendingSync = true))
             enqueue(
-                EntityType.TASK, id, Operation.DELETE, current.version,
+                EntityType.TASK,
+                id,
+                Operation.DELETE,
+                current.version,
                 mutations.json.encodeToString(DeletePayload(now)),
             )
         }

@@ -14,19 +14,14 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class CourseRepository(
-    private val databases: DatabaseManager,
-    private val mutations: LocalMutations,
-) {
+class CourseRepository(private val databases: DatabaseManager, private val mutations: LocalMutations) {
     private val courseDao get() = databases.db.courseDao()
 
-    fun observeCourses(): Flow<List<Course>> =
-        databases.current.flatMapLatest { it.courseDao().observeAllWithCounts() }.map { rows ->
-            rows.map { it.course.toDomain(it.noteCount, it.openTaskCount) }
-        }
+    fun observeCourses(): Flow<List<Course>> = databases.current.flatMapLatest { it.courseDao().observeAllWithCounts() }.map { rows ->
+        rows.map { it.course.toDomain(it.noteCount, it.openTaskCount) }
+    }
 
-    fun observeCourse(id: String): Flow<Course?> =
-        databases.current.flatMapLatest { it.courseDao().observeById(id) }.map { it?.toDomain() }
+    fun observeCourse(id: String): Flow<Course?> = databases.current.flatMapLatest { it.courseDao().observeById(id) }.map { it?.toDomain() }
 
     fun observeCount(): Flow<Int> = databases.current.flatMapLatest { it.courseDao().observeCount() }
 
@@ -81,14 +76,16 @@ class CourseRepository(
                 db.taskDao().upsert(it.copy(deletedAt = now, updatedAt = now))
             }
             enqueue(
-                EntityType.COURSE, id, Operation.DELETE, current.version,
+                EntityType.COURSE,
+                id,
+                Operation.DELETE,
+                current.version,
                 mutations.json.encodeToString(DeletePayload(now)),
             )
         }
     }
 
-    private fun CourseEntity.payload(): String =
-        mutations.json.encodeToString(CoursePayload(name, semester))
+    private fun CourseEntity.payload(): String = mutations.json.encodeToString(CoursePayload(name, semester))
 }
 
 private fun CourseEntity.toDomain(noteCount: Int = 0, openTaskCount: Int = 0) = Course(

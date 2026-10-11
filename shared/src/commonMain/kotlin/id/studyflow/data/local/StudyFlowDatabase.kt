@@ -46,8 +46,7 @@ expect object StudyFlowDatabaseConstructor : RoomDatabaseConstructor<StudyFlowDa
     override fun initialize(): StudyFlowDatabase
 }
 
-fun buildDatabase(builder: RoomDatabase.Builder<StudyFlowDatabase>): StudyFlowDatabase =
-    builder
-        .setDriver(BundledSQLiteDriver())
-        .setQueryCoroutineContext(Dispatchers.IO)
-        .build()
+fun buildDatabase(builder: RoomDatabase.Builder<StudyFlowDatabase>): StudyFlowDatabase = builder
+    .setDriver(BundledSQLiteDriver())
+    .setQueryCoroutineContext(Dispatchers.IO)
+    .build()

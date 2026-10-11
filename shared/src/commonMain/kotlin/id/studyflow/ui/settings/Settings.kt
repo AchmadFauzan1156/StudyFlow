@@ -38,15 +38,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
-data class SettingsUiState(
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val timeZoneId: String = "",
-)
+data class SettingsUiState(val themeMode: ThemeMode = ThemeMode.SYSTEM, val timeZoneId: String = "")
 
-class SettingsViewModel(
-    private val settings: SettingsRepository,
-    clock: AppClock,
-) : ViewModel() {
+class SettingsViewModel(private val settings: SettingsRepository, clock: AppClock) : ViewModel() {
     private val zone = clock.currentZone()
 
     val state: StateFlow<SettingsUiState> = settings.observeThemeMode()

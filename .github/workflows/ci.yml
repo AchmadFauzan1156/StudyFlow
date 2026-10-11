@@ -79,4 +79,4 @@ jobs:
         run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v6
       - name: Tes dan build
-        run: ./gradlew :shared:jvmTest :androidApp:assembleDebug :desktopApp:jar --console=plain
+        run: ./gradlew ktlintCheck :shared:jvmTest :androidApp:assembleDebug :desktopApp:jar --console=plain

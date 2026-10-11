@@ -6,6 +6,7 @@ dapat diambil ulang setelah lease habis. Hasil hanya ditulis oleh pemegang lease
 """
 
 import logging
+import threading
 import time
 import uuid
 from collections.abc import Callable
@@ -60,11 +61,22 @@ class Worker:
         self.clock = clock
         self._last_call: float | None = None
 
-    def run_forever(self, poll_seconds: float = 2.0) -> None:
+    def run_forever(self, poll_seconds: float = 2.0, stop: threading.Event | None = None) -> None:
+        """Memproses job terus-menerus; berhenti setelah [stop] di-set (mode tertanam di proses API)."""
         logger.info("Worker AI berjalan")
-        while True:
-            if not self.run_once():
-                self.sleep(poll_seconds)
+        while stop is None or not stop.is_set():
+            try:
+                busy = self.run_once()
+            except Exception:
+                # Mis. koneksi database terputus sesaat: catat lalu coba lagi, jangan matikan worker.
+                logger.exception("Worker AI gagal mengambil job; mencoba lagi")
+                busy = False
+            if not busy:
+                if stop is None:
+                    self.sleep(poll_seconds)
+                else:
+                    stop.wait(poll_seconds)
+        logger.info("Worker AI berhenti")
 
     def run_once(self) -> bool:
         """Memproses satu job jika ada. Mengembalikan False jika antrean kosong."""

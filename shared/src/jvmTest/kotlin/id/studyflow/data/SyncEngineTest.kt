@@ -48,7 +48,11 @@ private fun pullResponse(changes: List<ChangeDto> = emptyList(), cursor: String 
     ApiJson.encodeToString(PullResponseDto.serializer(), PullResponseDto(changes, cursor, hasMore = false))
 
 private fun applied(m: MutationDto) = MutationResultDto(
-    m.mutationId, m.entityType, m.entityId, "applied", version = m.baseVersion + 1,
+    m.mutationId,
+    m.entityType,
+    m.entityId,
+    "applied",
+    version = m.baseVersion + 1,
 )
 
 class SyncEngineTest {
@@ -57,11 +61,15 @@ class SyncEngineTest {
     @AfterTest
     fun close() = devices.forEach { it.close() }
 
-    private fun device(tokens: AccessTokenProvider = AccessTokenProvider { "token" }, handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): Device =
-        Device(MockEngine(handler), tokens).also {
-            it.databases.useAccount("user-1")
-            devices += it
-        }
+    private fun device(
+        tokens: AccessTokenProvider = AccessTokenProvider {
+            "token"
+        },
+        handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
+    ): Device = Device(MockEngine(handler), tokens).also {
+        it.databases.useAccount("user-1")
+        devices += it
+    }
 
     @Test
     fun retryAfterNetworkFailureResendsSameMutation() = runBlocking<Unit> {
@@ -124,7 +132,11 @@ class SyncEngineTest {
             if (request.url.encodedPath.endsWith("/push")) {
                 val results = request.pushedMutations().map { m ->
                     MutationResultDto(
-                        m.mutationId, m.entityType, m.entityId, "conflict", serverVersion,
+                        m.mutationId,
+                        m.entityType,
+                        m.entityId,
+                        "conflict",
+                        serverVersion,
                         ServerEntity(id = m.entityId, version = serverVersion, name = serverName),
                     )
                 }
@@ -155,8 +167,14 @@ class SyncEngineTest {
         val d = device { request ->
             if (request.url.encodedPath.endsWith("/push")) {
                 val results = request.pushedMutations().map { m ->
-                    MutationResultDto(m.mutationId, m.entityType, m.entityId, "conflict", 5,
-                        ServerEntity(id = m.entityId, version = 5, name = "Server"))
+                    MutationResultDto(
+                        m.mutationId,
+                        m.entityType,
+                        m.entityId,
+                        "conflict",
+                        5,
+                        ServerEntity(id = m.entityId, version = 5, name = "Server"),
+                    )
                 }
                 json(pushResponse(*results.toTypedArray()))
             } else {
@@ -248,7 +266,10 @@ class SyncEngineTest {
     fun unauthorizedResponseRefreshesTokenOnce() = runBlocking<Unit> {
         val forced = mutableListOf<Boolean>()
         var calls = 0
-        val tokens = AccessTokenProvider { force -> forced += force; if (force) "baru" else "lama" }
+        val tokens = AccessTokenProvider { force ->
+            forced += force
+            if (force) "baru" else "lama"
+        }
         val d = device(tokens) { request ->
             calls++
             if (request.headers[HttpHeaders.Authorization] == "Bearer lama") {
@@ -287,7 +308,10 @@ class SyncEngineTest {
     @Test
     fun localModeNeverTalksToServer() = runBlocking<Unit> {
         var calls = 0
-        val d = device { calls++; json(pullResponse()) }
+        val d = device {
+            calls++
+            json(pullResponse())
+        }
         d.databases.useAccount(null)
         d.courses.create("Lokal saja", null)
         d.sync.syncOnce()

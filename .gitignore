@@ -9,6 +9,8 @@ local.properties
 .fleet/
 .vscode/
 out/
+bin/
+.playwright-mcp/
 captures/
 .externalNativeBuild/
 .cxx/

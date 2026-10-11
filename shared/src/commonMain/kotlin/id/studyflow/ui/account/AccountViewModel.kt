@@ -29,11 +29,7 @@ data class AccountUiState(
     val persistsSession: Boolean = true,
 )
 
-data class AuthFormState(
-    val busy: Boolean = false,
-    val error: String? = null,
-    val info: String? = null,
-)
+data class AuthFormState(val busy: Boolean = false, val error: String? = null, val info: String? = null)
 
 class AccountViewModel(
     private val session: SessionManager,

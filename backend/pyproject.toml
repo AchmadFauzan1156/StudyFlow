@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.0",
-    "fastapi>=0.141.1",
+    "fastapi[standard]>=0.141.1",
     "httpx2>=2.13.1",
     "pgvector>=0.5.0",
     "psycopg[binary]>=3.3.6",
@@ -23,6 +23,10 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.9",
 ]
+
+# FastAPI Cloud: `fastapi deploy` dari folder backend/ memakai entrypoint ini.
+[tool.fastapi]
+entrypoint = "app.main:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

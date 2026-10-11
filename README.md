@@ -9,6 +9,8 @@ Aplikasi belajar pribadi untuk mahasiswa. Simpan catatan per mata kuliah, kelola
 | Akun dan database terkelola | Supabase |
 | AI | Google Gemini (free tier), atau API kompatibel OpenAI |
 
+**Ingin langsung memakai aplikasinya?** Unduh installer Windows (`.exe`) atau APK Android dari [Releases](https://github.com/AchmadFauzan1156/StudyFlow/releases/latest); langkahnya ada di [docs/INSTALL.md](docs/INSTALL.md). Aplikasi rilis sudah terhubung ke server online gratis.
+
 ## Daftar isi
 
 1. [Fitur](#fitur)
@@ -273,7 +275,8 @@ Tanpa variabel `STUDYFLOW_E2E_*`, tes E2E dilewati.
 
 | Dokumen | Isi |
 |---|---|
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deployment ke server, build rilis, backup |
+| [docs/INSTALL.md](docs/INSTALL.md) | Memasang aplikasi di Windows dan Android (untuk pengguna) |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deployment ke server (termasuk deploy gratis FastAPI Cloud + Supabase + Gemini), build rilis, backup |
 | [docs/DEMO.md](docs/DEMO.md) | Skrip demo end-to-end tanpa API key |
 | [docs/API.md](docs/API.md) | Kontrak API |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Keputusan teknis dan alasannya |

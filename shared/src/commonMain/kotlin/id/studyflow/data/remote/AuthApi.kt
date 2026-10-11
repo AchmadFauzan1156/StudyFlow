@@ -18,6 +18,7 @@ class AuthException(message: String, val isInvalidSession: Boolean = false) : Ex
 
 sealed interface SignUpResult {
     data class SignedIn(val tokens: TokenResponse) : SignUpResult
+
     /** Proyek Supabase mewajibkan konfirmasi email sebelum bisa masuk. */
     data object ConfirmationRequired : SignUpResult
 }
@@ -52,16 +53,15 @@ class AuthApi(private val client: HttpClient, private val config: ServerConfig) 
         }
     }
 
-    private suspend inline fun <reified T : Any> post(url: String, body: T): HttpResponse =
-        try {
-            client.post(url) {
-                header("apikey", config.supabasePublishableKey)
-                contentType(ContentType.Application.Json)
-                setBody(body)
-            }
-        } catch (e: IOException) {
-            throw AuthException("Tidak dapat terhubung ke server. Periksa koneksi internet.")
+    private suspend inline fun <reified T : Any> post(url: String, body: T): HttpResponse = try {
+        client.post(url) {
+            header("apikey", config.supabasePublishableKey)
+            contentType(ContentType.Application.Json)
+            setBody(body)
         }
+    } catch (e: IOException) {
+        throw AuthException("Tidak dapat terhubung ke server. Periksa koneksi internet.")
+    }
 
     private suspend fun parseTokens(response: HttpResponse): TokenResponse {
         val text = response.bodyAsText()
@@ -75,7 +75,9 @@ class AuthApi(private val client: HttpClient, private val config: ServerConfig) 
         val message = when {
             status == 429 -> "Terlalu banyak percobaan. Coba lagi beberapa saat lagi."
             code == "email_not_confirmed" -> "Email belum dikonfirmasi. Buka tautan konfirmasi di email kamu."
-            code == "invalid_credentials" || code == "invalid_grant" && status == 400 &&
+            code == "invalid_credentials" ||
+                code == "invalid_grant" &&
+                status == 400 &&
                 parsed?.errorDescription?.contains("credentials", ignoreCase = true) == true ->
                 "Email atau kata sandi salah."
             code == "user_already_exists" -> "Email sudah terdaftar. Silakan masuk."
@@ -85,9 +87,13 @@ class AuthApi(private val client: HttpClient, private val config: ServerConfig) 
             status >= 500 -> "Server autentikasi sedang bermasalah. Coba lagi nanti."
             else -> parsed?.msg ?: parsed?.errorDescription ?: parsed?.message ?: "Autentikasi gagal ($status)."
         }
-        val invalidSession = status in 400..401 && code in setOf(
-            "refresh_token_not_found", "refresh_token_already_used", "invalid_grant", "session_not_found",
-        )
+        val invalidSession = status in 400..401 &&
+            code in setOf(
+                "refresh_token_not_found",
+                "refresh_token_already_used",
+                "invalid_grant",
+                "session_not_found",
+            )
         return AuthException(message, isInvalidSession = invalidSession)
     }
 }

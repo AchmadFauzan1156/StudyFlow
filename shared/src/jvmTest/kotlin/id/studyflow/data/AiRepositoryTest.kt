@@ -2,10 +2,10 @@ package id.studyflow.data
 
 import id.studyflow.data.ai.AiException
 import id.studyflow.data.ai.NoteReadiness
-import id.studyflow.data.remote.MutationResultDto
-import id.studyflow.data.remote.PushResponseDto
 import id.studyflow.data.remote.ApiJson
+import id.studyflow.data.remote.MutationResultDto
 import id.studyflow.data.remote.PushRequestDto
+import id.studyflow.data.remote.PushResponseDto
 import id.studyflow.data.sync.SyncManager
 import id.studyflow.ui.study.PendingRequest
 import id.studyflow.ui.study.StudyNoteViewModel
@@ -53,18 +53,17 @@ class AiRepositoryTest {
         devices.forEach { it.close() }
     }
 
-    private fun device(handler: (HttpRequestData) -> Pair<HttpStatusCode, String>): Device =
-        Device(
-            MockEngine { request ->
-                requests += request
-                if (!online) throw IOException("offline")
-                val (status, body) = handler(request)
-                respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
-            },
-        ).also {
-            it.databases.useAccount("alice")
-            devices += it
-        }
+    private fun device(handler: (HttpRequestData) -> Pair<HttpStatusCode, String>): Device = Device(
+        MockEngine { request ->
+            requests += request
+            if (!online) throw IOException("offline")
+            val (status, body) = handler(request)
+            respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
+        },
+    ).also {
+        it.databases.useAccount("alice")
+        devices += it
+    }
 
     private fun defaultHandler(request: HttpRequestData): Pair<HttpStatusCode, String> {
         val path = request.url.encodedPath
@@ -74,15 +73,26 @@ class AiRepositoryTest {
                 val mutations = ApiJson.decodeFromString(PushRequestDto.serializer(), body).mutations
                 HttpStatusCode.OK to ApiJson.encodeToString(
                     PushResponseDto.serializer(),
-                    PushResponseDto(mutations.map { MutationResultDto(it.mutationId, it.entityType, it.entityId, "applied", it.baseVersion + 1) }),
+                    PushResponseDto(
+                        mutations.map {
+                            MutationResultDto(
+                                it.mutationId,
+                                it.entityType,
+                                it.entityId,
+                                "applied",
+                                it.baseVersion + 1,
+                            )
+                        },
+                    ),
                 )
             }
             path.endsWith("/sync/pull") -> HttpStatusCode.OK to """{"changes":[],"next_cursor":"c","has_more":false}"""
             path.endsWith("/ai/info") -> HttpStatusCode.OK to INFO_JSON
             path.endsWith("/summaries/s1") -> HttpStatusCode.OK to SUMMARY_JSON
             path.endsWith("/summaries/gone") -> HttpStatusCode.NotFound to """{"code":"not_found","message":"Rangkuman tidak ditemukan"}"""
-            path.endsWith("/summaries") -> HttpStatusCode.TooManyRequests to
-                """{"code":"quota_exceeded","message":"Kuota AI harianmu (10 permintaan) sudah habis. Coba lagi besok."}"""
+            path.endsWith("/summaries") ->
+                HttpStatusCode.TooManyRequests to
+                    """{"code":"quota_exceeded","message":"Kuota AI harianmu (10 permintaan) sudah habis. Coba lagi besok."}"""
             path.contains("/ai-results") -> HttpStatusCode.OK to """{"results":[],"pending_jobs":[]}"""
             else -> HttpStatusCode.NotFound to """{"code":"not_found","message":"x"}"""
         }
@@ -186,4 +196,3 @@ class AiRepositoryTest {
         while (!condition()) kotlinx.coroutines.delay(20)
     }
 }
-

@@ -20,30 +20,15 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 
 /** Satu sisi konflik untuk ditampilkan. [dueAt] hanya untuk tugas. */
-data class ConflictSide(
-    val title: String,
-    val body: String,
-    val deleted: Boolean,
-    val dueAt: Long? = null,
-    val done: Boolean = false,
-)
+data class ConflictSide(val title: String, val body: String, val deleted: Boolean, val dueAt: Long? = null, val done: Boolean = false)
 
-data class ConflictItem(
-    val entityType: EntityType,
-    val entityId: String,
-    val local: ConflictSide?,
-    val server: ConflictSide,
-)
+data class ConflictItem(val entityType: EntityType, val entityId: String, val local: ConflictSide?, val server: ConflictSide)
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ConflictRepository(
-    private val databases: DatabaseManager,
-    private val mutations: LocalMutations,
-) {
-    fun observeConflicts(): Flow<List<ConflictItem>> =
-        databases.current.flatMapLatest { db ->
-            db.syncDao().observeConflicts().map { list -> list.map { toItem(db, it) } }
-        }
+class ConflictRepository(private val databases: DatabaseManager, private val mutations: LocalMutations) {
+    fun observeConflicts(): Flow<List<ConflictItem>> = databases.current.flatMapLatest { db ->
+        db.syncDao().observeConflicts().map { list -> list.map { toItem(db, it) } }
+    }
 
     fun observeCount(): Flow<Int> = observeConflicts().map { it.size }
 
@@ -65,32 +50,44 @@ class ConflictRepository(
                 EntityType.COURSE -> {
                     val local = db.courseDao().getById(id) ?: return@write
                     val op = localOperation(local.deletedAt != null, server.deletedAt != null) ?: run {
-                        dao.setCourseSynced(id, base, pending = false); return@write
+                        dao.setCourseSynced(id, base, pending = false)
+                        return@write
                     }
-                    val payload = if (op == Operation.DELETE) json.encodeToString(DeletePayload(now))
-                    else json.encodeToString(CoursePayload(local.name, local.semester))
+                    val payload = if (op == Operation.DELETE) {
+                        json.encodeToString(DeletePayload(now))
+                    } else {
+                        json.encodeToString(CoursePayload(local.name, local.semester))
+                    }
                     db.courseDao().upsert(local.copy(version = base, pendingSync = true))
                     enqueue(type, id, op, base, payload)
                 }
                 EntityType.NOTE -> {
                     val local = db.noteDao().getById(id) ?: return@write
                     val op = localOperation(local.deletedAt != null, server.deletedAt != null) ?: run {
-                        dao.setNoteSynced(id, base, pending = false); return@write
+                        dao.setNoteSynced(id, base, pending = false)
+                        return@write
                     }
-                    val payload = if (op == Operation.DELETE) json.encodeToString(DeletePayload(now))
-                    else json.encodeToString(NotePayload(local.courseId, local.title, local.content))
+                    val payload = if (op == Operation.DELETE) {
+                        json.encodeToString(DeletePayload(now))
+                    } else {
+                        json.encodeToString(NotePayload(local.courseId, local.title, local.content))
+                    }
                     db.noteDao().upsert(local.copy(version = base, pendingSync = true))
                     enqueue(type, id, op, base, payload)
                 }
                 EntityType.TASK -> {
                     val local = db.taskDao().getById(id) ?: return@write
                     val op = localOperation(local.deletedAt != null, server.deletedAt != null) ?: run {
-                        dao.setTaskSynced(id, base, pending = false); return@write
+                        dao.setTaskSynced(id, base, pending = false)
+                        return@write
                     }
-                    val payload = if (op == Operation.DELETE) json.encodeToString(DeletePayload(now))
-                    else json.encodeToString(
-                        TaskPayload(local.courseId, local.title, local.description, local.dueAt, local.timeZoneId, local.status),
-                    )
+                    val payload = if (op == Operation.DELETE) {
+                        json.encodeToString(DeletePayload(now))
+                    } else {
+                        json.encodeToString(
+                            TaskPayload(local.courseId, local.title, local.description, local.dueAt, local.timeZoneId, local.status),
+                        )
+                    }
                     db.taskDao().upsert(local.copy(version = base, pendingSync = true))
                     enqueue(type, id, op, base, payload)
                 }

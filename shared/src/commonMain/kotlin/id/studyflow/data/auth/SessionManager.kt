@@ -39,8 +39,12 @@ class MemorySessionStore : SecureSessionStore {
     private var session: StoredSession? = null
     override val isPersistent = false
     override fun load() = session
-    override fun save(session: StoredSession) { this.session = session }
-    override fun clear() { session = null }
+    override fun save(session: StoredSession) {
+        this.session = session
+    }
+    override fun clear() {
+        session = null
+    }
 }
 
 sealed interface AuthState {

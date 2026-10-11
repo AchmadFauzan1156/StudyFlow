@@ -1,6 +1,7 @@
 package id.studyflow.data
 
 import androidx.room.Room
+import id.studyflow.data.ai.AiRepository
 import id.studyflow.data.auth.MemorySessionStore
 import id.studyflow.data.auth.SecureSessionStore
 import id.studyflow.data.auth.SessionManager
@@ -9,7 +10,6 @@ import id.studyflow.data.local.DatabaseManager
 import id.studyflow.data.local.StudyFlowDatabase
 import id.studyflow.data.local.buildDatabase
 import id.studyflow.data.remote.AccessTokenProvider
-import id.studyflow.data.ai.AiRepository
 import id.studyflow.data.remote.AiApi
 import id.studyflow.data.remote.ApiCaller
 import id.studyflow.data.remote.AuthApi

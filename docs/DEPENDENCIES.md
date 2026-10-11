@@ -61,3 +61,9 @@ PostgreSQL lokal: image `pgvector/pgvector:pg17` (docker-compose), dipilih agar 
 - Room KMP: https://developer.android.com/kotlin/multiplatform/room
 - AGP: https://developer.android.com/build/releases/gradle-plugin
 - Backend: `uv lock --upgrade-package <nama>` lalu jalankan tes.
+
+## Tooling kualitas (11 Oktober 2026)
+
+| Komponen | Versi | Catatan |
+|---|---|---|
+| `org.jlleitschuh.gradle.ktlint` | 14.2.0 | Mendukung Gradle 9. Gaya `intellij_idea` (lihat `.editorconfig`); `ktlint_official` menghasilkan ~1.600 pelanggaran dan terlalu jauh dari gaya kode yang ada. |

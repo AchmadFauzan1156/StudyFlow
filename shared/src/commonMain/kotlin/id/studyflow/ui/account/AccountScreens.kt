@@ -76,7 +76,10 @@ fun AuthScreen(onDone: () -> Unit) {
             TopAppBar(
                 title = { Text("Akun StudyFlow") },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.clearForm(); onDone() }) {
+                    IconButton(onClick = {
+                        viewModel.clearForm()
+                        onDone()
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
@@ -97,8 +100,14 @@ fun AuthScreen(onDone: () -> Unit) {
                     return@Column
                 }
                 SecondaryTabRow(selectedTabIndex = mode) {
-                    Tab(selected = mode == 0, onClick = { mode = 0; viewModel.clearForm() }, text = { Text("Masuk") })
-                    Tab(selected = mode == 1, onClick = { mode = 1; viewModel.clearForm() }, text = { Text("Daftar") })
+                    Tab(selected = mode == 0, onClick = {
+                        mode = 0
+                        viewModel.clearForm()
+                    }, text = { Text("Masuk") })
+                    Tab(selected = mode == 1, onClick = {
+                        mode = 1
+                        viewModel.clearForm()
+                    }, text = { Text("Daftar") })
                 }
                 Text(
                     "Masuk untuk menyinkronkan mata kuliah, catatan, dan tugas antar perangkat. " +
@@ -219,7 +228,10 @@ fun AccountSection(onOpenAuth: () -> Unit, onOpenConflicts: () -> Unit, formatTi
                 )
             },
             confirmButton = {
-                TextButton(onClick = { confirmSignOut = false; viewModel.signOut() }) { Text("Keluar") }
+                TextButton(onClick = {
+                    confirmSignOut = false
+                    viewModel.signOut()
+                }) { Text("Keluar") }
             },
             dismissButton = { TextButton(onClick = { confirmSignOut = false }) { Text("Batal") } },
         )

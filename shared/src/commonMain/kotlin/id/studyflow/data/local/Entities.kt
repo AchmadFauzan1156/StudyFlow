@@ -115,17 +115,10 @@ data class ConflictEntity(
  * Berada di database per akun sehingga tidak pernah terbagi antar pengguna.
  */
 @Entity(tableName = "remote_cache")
-data class RemoteCacheEntity(
-    @PrimaryKey val key: String,
-    val json: String,
-    @ColumnInfo(name = "fetched_at") val fetchedAt: Long,
-)
+data class RemoteCacheEntity(@PrimaryKey val key: String, val json: String, @ColumnInfo(name = "fetched_at") val fetchedAt: Long)
 
 @Entity(tableName = "app_settings")
-data class SettingEntity(
-    @PrimaryKey val key: String,
-    val value: String,
-)
+data class SettingEntity(@PrimaryKey val key: String, val value: String)
 
 data class CourseWithCounts(
     @Embedded val course: CourseEntity,
@@ -133,7 +126,4 @@ data class CourseWithCounts(
     @ColumnInfo(name = "open_task_count") val openTaskCount: Int,
 )
 
-data class TaskWithCourse(
-    @Embedded val task: TaskEntity,
-    @ColumnInfo(name = "course_name") val courseName: String,
-)
+data class TaskWithCourse(@Embedded val task: TaskEntity, @ColumnInfo(name = "course_name") val courseName: String)

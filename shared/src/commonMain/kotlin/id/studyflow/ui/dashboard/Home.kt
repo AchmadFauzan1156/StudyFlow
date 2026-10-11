@@ -1,13 +1,27 @@
 package id.studyflow.ui.dashboard
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -21,36 +35,22 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Create
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import id.studyflow.domain.formatDate
-import id.studyflow.domain.toLocalDateTime
-import id.studyflow.ui.components.SectionHeader
-import id.studyflow.ui.components.StatTile
 import id.studyflow.data.AppClock
 import id.studyflow.data.auth.AuthState
 import id.studyflow.data.auth.SessionManager
-import id.studyflow.data.sync.ConflictRepository
 import id.studyflow.data.repository.CourseRepository
 import id.studyflow.data.repository.TaskRepository
+import id.studyflow.data.sync.ConflictRepository
 import id.studyflow.domain.DeadlineStatus
 import id.studyflow.domain.StudyTask
 import id.studyflow.domain.TaskStatus
 import id.studyflow.domain.deadlineStatus
+import id.studyflow.domain.formatDate
+import id.studyflow.domain.toLocalDateTime
 import id.studyflow.ui.components.EmptyState
 import id.studyflow.ui.components.InfoCard
+import id.studyflow.ui.components.SectionHeader
+import id.studyflow.ui.components.StatTile
 import id.studyflow.ui.components.TaskRow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -114,12 +114,7 @@ class HomeViewModel(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    onOpenCourses: () -> Unit,
-    onOpenTask: (StudyTask) -> Unit,
-    onOpenConflicts: () -> Unit,
-    onOpenAuth: () -> Unit,
-) {
+fun HomeScreen(onOpenCourses: () -> Unit, onOpenTask: (StudyTask) -> Unit, onOpenConflicts: () -> Unit, onOpenAuth: () -> Unit) {
     val viewModel = koinViewModel<HomeViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 

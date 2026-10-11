@@ -41,7 +41,8 @@ class MigrationTest {
                         "VALUES ('c1', 'Kriptografi', NULL, 1, 1, 0, NULL, 1)",
                 )
                 conn.execSQL(
-                    "INSERT INTO local_outbox (mutation_id, entity_type, entity_id, operation, base_version, payload, created_at, retry_count) " +
+                    "INSERT INTO local_outbox (mutation_id, entity_type, entity_id, operation, base_version, " +
+                        "payload, created_at, retry_count) " +
                         "VALUES ('m1', 'COURSE', 'c1', 'CREATE', 0, '{\"name\":\"Kriptografi\"}', 1, 0)",
                 )
                 conn.execSQL("PRAGMA user_version = 1")

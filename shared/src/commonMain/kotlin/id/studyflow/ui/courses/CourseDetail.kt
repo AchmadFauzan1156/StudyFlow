@@ -31,9 +31,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,7 +52,6 @@ import id.studyflow.domain.TaskStatus
 import id.studyflow.domain.formatDateTime
 import id.studyflow.ui.components.ConfirmDeleteDialog
 import id.studyflow.ui.components.EmptyState
-import id.studyflow.ui.components.InfoCard
 import id.studyflow.ui.components.TaskRow
 import id.studyflow.ui.materials.MaterialsTab
 import id.studyflow.ui.study.StudyTab
@@ -110,7 +109,10 @@ class CourseDetailViewModel(
     fun updateCourse(id: String, name: String, semester: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             runCatching { courses.update(id, name, semester) }
-                .onSuccess { _error.value = null; onSuccess() }
+                .onSuccess {
+                    _error.value = null
+                    onSuccess()
+                }
                 .onFailure { _error.value = it.message ?: "Gagal menyimpan" }
         }
     }
@@ -208,7 +210,10 @@ fun CourseDetailScreen(
             initial = course,
             error = error,
             onSave = { name, semester -> viewModel.updateCourse(course.id, name, semester) { editing = false } },
-            onDismiss = { editing = false; viewModel.clearError() },
+            onDismiss = {
+                editing = false
+                viewModel.clearError()
+            },
         )
     }
     if (deleting && course != null) {
@@ -262,12 +267,7 @@ private fun NotesTab(notes: List<Note>, zone: TimeZone, onOpenNote: (String?) ->
 }
 
 @Composable
-private fun TasksTab(
-    state: CourseDetailUiState,
-    onOpenTask: (String?) -> Unit,
-    onToggleDone: (StudyTask) -> Unit,
-    modifier: Modifier,
-) {
+private fun TasksTab(state: CourseDetailUiState, onOpenTask: (String?) -> Unit, onToggleDone: (StudyTask) -> Unit, modifier: Modifier) {
     if (state.tasks.isEmpty()) {
         EmptyState("Belum ada tugas", "Tambahkan tugas beserta deadline-nya.", modifier)
         return

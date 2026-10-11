@@ -129,10 +129,7 @@ data class NoteResultDto(
 )
 
 @Serializable
-data class NoteResultsDto(
-    val results: List<NoteResultDto>,
-    @SerialName("pending_jobs") val pendingJobs: List<JobDto>,
-)
+data class NoteResultsDto(val results: List<NoteResultDto>, @SerialName("pending_jobs") val pendingJobs: List<JobDto>)
 
 @Serializable
 data class TopicDto(
@@ -196,15 +193,14 @@ class AiApi(private val api: ApiCaller) {
     suspend fun requestQuiz(noteId: String, version: Int, questionCount: Int, idempotencyKey: String): JobDto =
         generate("/v1/quizzes", GenerateRequest(noteId, version, questionCount), idempotencyKey)
 
-    private suspend fun generate(path: String, body: GenerateRequest, key: String): JobDto =
-        api.call(JobDto.serializer()) { token ->
-            post(api.url(path)) {
-                authorize(token)
-                header("Idempotency-Key", key)
-                contentType(ContentType.Application.Json)
-                setBody(body)
-            }
+    private suspend fun generate(path: String, body: GenerateRequest, key: String): JobDto = api.call(JobDto.serializer()) { token ->
+        post(api.url(path)) {
+            authorize(token)
+            header("Idempotency-Key", key)
+            contentType(ContentType.Application.Json)
+            setBody(body)
         }
+    }
 
     suspend fun job(id: String): JobDto = api.call(JobDto.serializer()) { token ->
         get(api.url("/v1/jobs/$id")) { authorize(token) }
@@ -232,13 +228,12 @@ class AiApi(private val api: ApiCaller) {
         get(api.url("/v1/attempts/$id")) { authorize(token) }
     }
 
-    suspend fun attempts(limit: Int = 50): List<AttemptSummaryDto> =
-        api.call(ListSerializer(AttemptSummaryDto.serializer())) { token ->
-            get(api.url("/v1/attempts")) {
-                authorize(token)
-                parameter("limit", limit)
-            }
+    suspend fun attempts(limit: Int = 50): List<AttemptSummaryDto> = api.call(ListSerializer(AttemptSummaryDto.serializer())) { token ->
+        get(api.url("/v1/attempts")) {
+            authorize(token)
+            parameter("limit", limit)
         }
+    }
 
     suspend fun noteResults(noteId: String): NoteResultsDto = api.call(NoteResultsDto.serializer()) { token ->
         get(api.url("/v1/notes/$noteId/ai-results")) { authorize(token) }
