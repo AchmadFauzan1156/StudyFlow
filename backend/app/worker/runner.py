@@ -65,7 +65,13 @@ class Worker:
         """Memproses job terus-menerus; berhenti setelah [stop] di-set (mode tertanam di proses API)."""
         logger.info("Worker AI berjalan")
         while stop is None or not stop.is_set():
-            if not self.run_once():
+            try:
+                busy = self.run_once()
+            except Exception:
+                # Mis. koneksi database terputus sesaat: catat lalu coba lagi, jangan matikan worker.
+                logger.exception("Worker AI gagal mengambil job; mencoba lagi")
+                busy = False
+            if not busy:
                 if stop is None:
                     self.sleep(poll_seconds)
                 else:

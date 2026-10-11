@@ -49,3 +49,28 @@ def test_unbuildable_worker_keeps_api_alive(monkeypatch):
     with TestClient(app) as client:
         assert client.get("/health").status_code == 200
     assert app.state.embedded_worker_thread is None
+
+
+def test_embedded_worker_survives_database_error(monkeypatch):
+    # Mis. koneksi pooler Supabase terputus sesaat: worker tertanam harus tetap hidup.
+    from sqlalchemy.exc import OperationalError
+
+    from app.worker.runner import Worker
+
+    stop = threading.Event()
+    calls = []
+
+    class FlakyWorker(Worker):
+        def run_once(self) -> bool:
+            calls.append(1)
+            if len(calls) == 1:
+                raise OperationalError("select 1", {}, Exception("server closed the connection"))
+            stop.set()
+            return False
+
+    worker = FlakyWorker(None, Settings(_env_file=None, app_env=AppEnv.TEST), None)
+    thread = threading.Thread(target=worker.run_forever, kwargs={"poll_seconds": 0.01, "stop": stop}, daemon=True)
+    thread.start()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert len(calls) == 2
